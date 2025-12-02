@@ -1,0 +1,11 @@
+.venv
+__pycache__
+logs/
+plugins/
+dags/
+dbt_project/
+*.duckdb
+*.db
+.git
+.idea
+.vscode

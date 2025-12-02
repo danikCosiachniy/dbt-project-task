@@ -14,6 +14,8 @@ airflow/airflow.cfg
 airflow/webserver_config.py
 
 .DS_Store
+*.duckdb
+*.db
 
 .env
 *.pem

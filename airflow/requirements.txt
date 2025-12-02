@@ -1,0 +1,16 @@
+dbt-core==1.7.10
+dbt-duckdb==1.7.1
+dbt-snowflake==1.7.1
+
+astronomer-cosmos>=1.5.0
+
+apache-airflow-providers-snowflake
+apache-airflow-providers-openlineage>=1.8.0
+
+protobuf==4.25.3
+opentelemetry-api==1.22.0
+opentelemetry-proto==1.22.0
+opentelemetry-sdk==1.22.0
+opentelemetry-exporter-otlp==1.22.0
+opentelemetry-exporter-otlp-proto-grpc==1.22.0
+opentelemetry-exporter-otlp-proto-http==1.22.0
