@@ -1,0 +1,13 @@
+[project]
+name = "retail-vault"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "dbt-core>=1.10.15",
+    "dbt-duckdb>=1.10.0",
+    "dbt-snowflake>=1.10.3",
+    "loguru>=0.7.3",
+    "sqlfluff>=3.5.0",
+]

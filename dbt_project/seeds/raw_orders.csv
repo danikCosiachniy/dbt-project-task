@@ -1,0 +1,4 @@
+order_id,customer_id,status,order_date,amount
+1001,50,NEW,2025-01-01,150.00
+1002,51,SHIPPED,2025-01-02,200.50
+1003,50,DELIVERED,2025-01-03,50.00
