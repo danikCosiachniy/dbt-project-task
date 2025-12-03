@@ -22,3 +22,6 @@ models:
     raw_vault:
       +materialized: incremental
       +schema: raw_vault
+    marts:
+      +materialized: table
+      +schema: marts
