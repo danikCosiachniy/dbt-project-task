@@ -2,7 +2,7 @@ name: 'retail_vault'
 version: '1.0.0'
 config-version: 2
 
-# Ссылка на профиль (подключение), который мы опишем ниже
+# Имя профиля должно совпадать с тем, что в profiles.yml и в DAG'е
 profile: 'retail_vault_profile'
 
 model-paths: ["models"]
@@ -21,6 +21,7 @@ models:
       +schema: staging
     raw_vault:
       +materialized: incremental
+      +schema: raw_vault
       +schema: raw_vault
     marts:
       +materialized: table
