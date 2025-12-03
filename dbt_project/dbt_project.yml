@@ -2,7 +2,6 @@ name: 'retail_vault'
 version: '1.0.0'
 config-version: 2
 
-# Имя профиля должно совпадать с тем, что в profiles.yml и в DAG'е
 profile: 'retail_vault_profile'
 
 model-paths: ["models"]
@@ -14,15 +13,14 @@ macro-paths: ["macros"]
 target-path: "target"
 clean-targets: ["target", "dbt_packages", "logs"]
 
+seeds:
+  retail_vault:
+
 models:
   retail_vault:
     staging:
       +materialized: view
-      +schema: staging
     raw_vault:
       +materialized: incremental
-      +schema: raw_vault
-      +schema: raw_vault
     marts:
       +materialized: table
-      +schema: marts
