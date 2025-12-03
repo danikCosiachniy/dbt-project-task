@@ -1,21 +1,27 @@
-with source as (
-    select * from {{ ref('raw_orders') }}
+WITH raw_data AS (
+    SELECT * FROM {{ ref('raw_orders') }}
 ),
 
-hashed as (
-    select
-        md5(cast(upper(trim(cast(order_id as varchar))) as varchar)) as hk_order_id,
-        md5(cast(upper(trim(cast(customer_id as varchar))) as varchar)) as hk_customer_id,
-        md5(concat(cast(status as varchar), cast(amount as varchar))) as hash_diff,
-        
+hashed_data AS (
+    SELECT
         order_id,
-        customer_id,
-        status,
-        amount,
+        customer_id, 
+        
+        MD5(CAST(order_id AS VARCHAR)) as order_hk,
+        
+        MD5(CAST(customer_id AS VARCHAR)) as customer_hk,
+        
+        MD5(CAST(order_id AS VARCHAR) || CAST(customer_id AS VARCHAR)) as order_customer_link_hk,
+        
+        MD5(CAST(order_date AS VARCHAR) || CAST(status AS VARCHAR)) as order_hashdiff,
+
         order_date,
-        current_timestamp as load_date,
-        'LOCAL_CSV' as record_source
-    from source
+        status,
+        
+        'raw_orders_csv' as record_source,
+        CURRENT_TIMESTAMP as load_date
+
+    FROM raw_data
 )
 
-select * from hashed
+SELECT * FROM hashed_data
