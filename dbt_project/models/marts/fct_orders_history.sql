@@ -15,7 +15,7 @@ final AS (
         s.status,
         s.load_date as dv_load_date
     FROM orders_hub h
-    INNER JOIN orders_sat s 
+    INNER JOIN orders_sat s
         ON h.order_hk = s.order_hk
 )
 

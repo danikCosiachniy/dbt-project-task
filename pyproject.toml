@@ -1,0 +1,70 @@
+[project]
+name = "retail_vault"
+version = "0.1.0"
+description = "Retail Data Vault pipeline with Airflow, dbt and DuckDB"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "apache-airflow>=2.10.3",
+    "astronomer-cosmos>=1.2.5",
+    "dbt-duckdb>=1.7.0",
+    "duckdb>=1.0.0",
+    "loguru>=0.7.2",
+    "pandas>=2.0.0",
+    "pyyaml>=6.0",
+    "tqdm>=4.66",
+]
+
+[dependency-groups]
+dev = [
+    "black>=24.0.0",
+    "pre-commit>=3.5.0",
+    "pytest>=8.0.0",
+    "ruff>=0.3.0",
+]
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+preview = true
+skip-string-normalization = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [
+    ".bzr", ".direnv", ".eggs", ".git", ".hg", ".mypy_cache", ".tox", ".venv", "venv",
+    "_build", "buck-out", "build", "dist", "node_modules",
+    "dbt_project/dbt_packages",
+    "dbt_project/target",
+]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "UP", "F", "C", "B", "Q", "S", "C4", "I",
+    "RUF", "FA", "ISC", "PIE", "PT", "RSE", "RET", "SIM", "N", "BLE", "FURB"
+]
+ignore = [
+    "E501",
+    "B008",
+    "C901",
+    "S101",
+    "S311", "S608", "S301",
+    "N812", "N817", "N806", "N802", "N803", "N815", "N814",
+    "W191", "E111", "E114", "E117", "D206", "D300",
+    "Q000", "Q001", "Q002", "Q003",
+    "COM812", "COM819", "ISC001", "ISC002",
+]
+
+[tool.ruff.lint.flake8-quotes]
+docstring-quotes = "double"
+inline-quotes = "single"
+multiline-quotes = "single"
+
+[tool.ruff.lint.isort]
+known-first-party = ["utils", "airflow"]
