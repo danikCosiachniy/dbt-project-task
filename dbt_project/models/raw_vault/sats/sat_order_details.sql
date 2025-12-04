@@ -12,9 +12,9 @@ FROM {{ ref('stg_orders') }} as source
 {% if is_incremental() %}
 -- Insert only if the Hash Diff changed for this Hub Key
 WHERE NOT EXISTS (
-    SELECT 1 
+    SELECT 1
     FROM {{ this }} as target
-    WHERE target.order_hk = source.order_hk 
+    WHERE target.order_hk = source.order_hk
       AND target.order_hashdiff = source.order_hashdiff
 )
 {% endif %}
