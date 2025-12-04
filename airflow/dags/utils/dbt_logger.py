@@ -41,11 +41,11 @@ def log_failure_callback(context):
     ti: TaskInstance = context.get('task_instance')
     exception = context.get('exception')
 
-    logger.error(f'Task Failed: {ti.task_id} ' f'| DAG: {ti.dag_id} ' f'| Error: {exception}')
+    logger.error(f'Task Failed: {ti.task_id} | DAG: {ti.dag_id} | Error: {exception}')
 
 
 def log_start_callback(context):
     """Info log of execution of the task with loguru"""
     ti: TaskInstance = context.get('task_instance')
 
-    logger.info(f'Executing Task: {ti.task_id} ' f'| DAG: {ti.dag_id} ' f'| RunID: {ti.run_id}')
+    logger.info(f'Executing Task: {ti.task_id} | DAG: {ti.dag_id} | RunID: {ti.run_id}')
