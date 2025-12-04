@@ -3,11 +3,8 @@ from datetime import datetime
 from airflow import DAG
 from cosmos import DbtTaskGroup, ProjectConfig, ProfileConfig, ExecutionConfig
 
-# Пути внутри контейнера
 DBT_PROJECT_PATH = "/opt/airflow/dbt_project"
 
-# ВАЖНО: Мы указываем путь к profiles.yml, чтобы использовать DuckDB.
-# Если здесь останется SnowflakeUserPasswordProfileMapping, будет ошибка "conn_id not found".
 profile_config = ProfileConfig(
     profile_name="retail_vault_profile",
     target_name="dev",
