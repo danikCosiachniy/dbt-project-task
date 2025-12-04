@@ -1,16 +1,20 @@
 {{ config(materialized='incremental') }}
 
 SELECT
-    order_hk,      
-    order_hashdiff,
-    order_date,
-    status,
-    load_date,
-    record_source
-FROM {{ ref('stg_orders') }}
+    source.order_hk,
+    source.order_hashdiff,
+    source.order_date,
+    source.status,
+    CURRENT_TIMESTAMP as load_date,
+    source.record_source
+FROM {{ ref('stg_orders') }} as source
 
 {% if is_incremental() %}
-
-WHERE order_hk || order_hashdiff NOT IN 
-    (SELECT order_hk || order_hashdiff FROM {{ this }})
+-- Insert only if the Hash Diff changed for this Hub Key
+WHERE NOT EXISTS (
+    SELECT 1 
+    FROM {{ this }} as target
+    WHERE target.order_hk = source.order_hk 
+      AND target.order_hashdiff = source.order_hashdiff
+)
 {% endif %}

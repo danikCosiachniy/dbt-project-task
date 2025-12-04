@@ -1,13 +1,17 @@
 {{ config(materialized='incremental') }}
 
 SELECT DISTINCT
-    order_hk,
-    order_id,
-    load_date,
-    record_source
-FROM {{ ref('stg_orders') }}
+    source.order_hk,
+    source.order_id,
+    CURRENT_TIMESTAMP as load_date, 
+    source.record_source
+FROM {{ ref('stg_orders') }} as source
 
 {% if is_incremental() %}
-
-WHERE order_hk NOT IN (SELECT order_hk FROM {{ this }})
+-- Incremental logic using NOT EXISTS for better performance
+WHERE NOT EXISTS (
+    SELECT 1 
+    FROM {{ this }} as target 
+    WHERE target.order_hk = source.order_hk
+)
 {% endif %}
