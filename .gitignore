@@ -20,3 +20,5 @@ airflow/webserver_config.py
 
 .env
 *.pem
+
+.ruff_cache
