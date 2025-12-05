@@ -17,6 +17,7 @@ env:
   SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
   SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
   SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -31,19 +32,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
           pip install ruff
-
-      - name: Run Ruff (Linting)
-        run: ruff check .
-
-      - name: Run Ruff (Formatting Check)
-        run: ruff format --check .
+          ruff check .
+          ruff format --check .
 
   dbt-check:
     runs-on: ubuntu-latest
     needs: lint
-
     defaults:
       run:
         working-directory: ./dbt_project
@@ -57,24 +52,33 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dbt and dependencies
+      - name: Install dbt
+        # Нам нужен только snowflake адаптер
         run: |
-          python -m pip install --upgrade pip
+          pip install --upgrade pip
           pip install dbt-snowflake==1.7.2 dbt-core==1.7.10
 
       - name: Create CI profiles.yml
+        # ВАЖНО: Мы генерируем конфиг для SNOWFLAKE, подставляя env_var
         run: |
           mkdir -p ~/.dbt
           echo "retail_vault_profile:" > ~/.dbt/profiles.yml
-          echo "  target: dev" >> ~/.dbt/profiles.yml
+          echo "  target: snowflake" >> ~/.dbt/profiles.yml
           echo "  outputs:" >> ~/.dbt/profiles.yml
-          echo "    dev:" >> ~/.dbt/profiles.yml
-          echo "      type: duckdb" >> ~/.dbt/profiles.yml
-          echo "      path: 'ci_db.duckdb'" >> ~/.dbt/profiles.yml
-          echo "      threads: 1" >> ~/.dbt/profiles.yml
+          echo "    snowflake:" >> ~/.dbt/profiles.yml
+          echo "      type: snowflake" >> ~/.dbt/profiles.yml
+          echo "      account: $SNOWFLAKE_ACCOUNT" >> ~/.dbt/profiles.yml
+          echo "      user: $SNOWFLAKE_USER" >> ~/.dbt/profiles.yml
+          echo "      password: $SNOWFLAKE_PASSWORD" >> ~/.dbt/profiles.yml
+          echo "      role: $SNOWFLAKE_ROLE" >> ~/.dbt/profiles.yml
+          echo "      warehouse: $SNOWFLAKE_WAREHOUSE" >> ~/.dbt/profiles.yml
+          echo "      database: $SNOWFLAKE_DATABASE" >> ~/.dbt/profiles.yml
+          echo "      schema: $SNOWFLAKE_SCHEMA" >> ~/.dbt/profiles.yml
+          echo "      threads: 4" >> ~/.dbt/profiles.yml
+          echo "      client_session_keep_alive: False" >> ~/.dbt/profiles.yml
 
       - name: Install dbt packages
         run: dbt deps
 
-      - name: Run dbt Build (Seed + Run + Test)
-        run: dbt build
+      - name: Run dbt Build
+        run: dbt build --target snowflake
