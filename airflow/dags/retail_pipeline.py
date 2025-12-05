@@ -9,7 +9,7 @@ DBT_PROJECT_PATH = '/opt/airflow/dbt_project'
 
 profile_config = ProfileConfig(
     profile_name='retail_vault_profile',
-    target_name='dev',
+    target_name='snowflake',
     profiles_yml_filepath=f'{DBT_PROJECT_PATH}/profiles.yml',
 )
 

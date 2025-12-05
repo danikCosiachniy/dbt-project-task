@@ -16,3 +16,4 @@ opentelemetry-exporter-otlp-proto-grpc==1.22.0
 opentelemetry-exporter-otlp-proto-http==1.22.0
 
 loguru
+dbt-snowflake>=1.7.0
