@@ -39,7 +39,6 @@ jobs:
   dbt-check:
     runs-on: ubuntu-latest
     needs: lint
-    environment: ENV
     defaults:
       run:
         working-directory: ./dbt_project
