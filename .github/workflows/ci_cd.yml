@@ -1,13 +1,15 @@
-name: CI Pipeline
+name: CI/CD Pipeline
 
 on:
   push:
     branches: [ "**" ]
+    tags: ["v*"]
   pull_request:
     branches: [ "main" ]
 
 permissions:
   contents: read
+  packages: write
 
 env:
   SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
@@ -18,9 +20,43 @@ env:
   SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
   SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
 
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}-airflow
+
 jobs:
-  lint:
+  secrets-guard:
+    name: 🔒 Secrets guard
     runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for forbidden files (.env, keys, etc.)
+        run: |
+          forbidden_files=".env .env.local .env.dev .env.prod id_rsa id_ed25519"
+          for f in $forbidden_files; do
+            if git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+              echo "::error file=$f::Forbidden file committed: $f"
+              exit 1
+            fi
+          done
+
+      - name: Grep for obvious secrets
+        run: |
+          patterns='password:|secret_key|api_key|SNOWFLAKE_PASSWORD|AWS_SECRET_ACCESS_KEY'
+          if git grep -niE "$patterns" -- . ':!*.md' > /tmp/secret_hits.txt 2>/dev/null; then
+            echo "::error ::Potential secrets detected in the repository:"
+            cat /tmp/secret_hits.txt
+            exit 1
+          fi
+          echo "No obvious secrets detected."
+
+  lint:
+    name: 🧹 Lint & format
+    runs-on: ubuntu-latest
+    needs: secrets-guard
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -30,13 +66,27 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml', 'requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install ruff
         run: |
+          python -m pip install --upgrade pip
           pip install ruff
-          ruff check .
-          ruff format --check .
+
+      - name: Run ruff lint
+        run: ruff check .
+
+      - name: Run ruff format check
+        run: ruff format --check .
 
   dbt-check:
+    name: 🧪 dbt Snowflake check
     runs-on: ubuntu-latest
     needs: lint
     defaults:
@@ -52,31 +102,77 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dbt
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-dbt-${{ hashFiles('dbt_project/dbt_project.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-dbt-
+
+      - name: Install dbt Snowflake
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install dbt-snowflake==1.7.2 dbt-core==1.7.10
 
       - name: Create CI profiles.yml
         run: |
           mkdir -p ~/.dbt
-          echo "retail_vault_profile:" > ~/.dbt/profiles.yml
-          echo "  target: snowflake" >> ~/.dbt/profiles.yml
-          echo "  outputs:" >> ~/.dbt/profiles.yml
-          echo "    snowflake:" >> ~/.dbt/profiles.yml
-          echo "      type: snowflake" >> ~/.dbt/profiles.yml
-          echo "      account: $SNOWFLAKE_ACCOUNT" >> ~/.dbt/profiles.yml
-          echo "      user: $SNOWFLAKE_USER" >> ~/.dbt/profiles.yml
-          echo "      password: $SNOWFLAKE_PASSWORD" >> ~/.dbt/profiles.yml
-          echo "      role: $SNOWFLAKE_ROLE" >> ~/.dbt/profiles.yml
-          echo "      warehouse: $SNOWFLAKE_WAREHOUSE" >> ~/.dbt/profiles.yml
-          echo "      database: $SNOWFLAKE_DATABASE" >> ~/.dbt/profiles.yml
-          echo "      schema: $SNOWFLAKE_SCHEMA" >> ~/.dbt/profiles.yml
-          echo "      threads: 4" >> ~/.dbt/profiles.yml
-          echo "      client_session_keep_alive: False" >> ~/.dbt/profiles.yml
+          cat << 'EOF' > ~/.dbt/profiles.yml
+          retail_vault_profile:
+            target: snowflake
+            outputs:
+              snowflake:
+                type: snowflake
+                account: ${SNOWFLAKE_ACCOUNT}
+                user: ${SNOWFLAKE_USER}
+                password: ${SNOWFLAKE_PASSWORD}
+                role: ${SNOWFLAKE_ROLE}
+                warehouse: ${SNOWFLAKE_WAREHOUSE}
+                database: ${SNOWFLAKE_DATABASE}
+                schema: ${SNOWFLAKE_SCHEMA}
+                threads: 4
+                client_session_keep_alive: False
+          EOF
 
       - name: Install dbt packages
         run: dbt deps
 
-      - name: Run dbt Build
+      - name: Run dbt build (Snowflake target)
         run: dbt build --target snowflake
+
+  docker-build-and-push:
+    name: 📦 Build & push Airflow image
+    runs-on: ubuntu-latest
+    needs: dbt-check
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
