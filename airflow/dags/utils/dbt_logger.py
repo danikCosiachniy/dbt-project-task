@@ -1,19 +1,26 @@
 import sys
+from typing import Any
 
 from loguru import logger
 
 from airflow.models import TaskInstance
 
+# Remove default Loguru handler to avoid duplicate logs
 logger.remove()
 
+# Console handler: human-readable logs to stderr
 logger.add(
     sys.stderr,
-    format='<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{function}</cyan> - <level>{message}</level>',
+    format='<green>{time:YYYY-MM-DD HH:mm:ss}</green> | '
+    '<level>{level: <8}</level> | '
+    '<cyan>{function}</cyan> - <level>{message}</level>',
     level='INFO',
 )
 
-LOG_FILE_PATH = '/opt/airflow/logs/dbt_pipeline.log'
+# Path to the central dbt/Airflow log file inside the container
+LOG_FILE_PATH: str = '/opt/airflow/logs/dbt_pipeline.log'
 
+# File handler: structured JSON logs with rotation & compression
 logger.add(
     LOG_FILE_PATH,
     rotation='10 MB',
@@ -24,7 +31,7 @@ logger.add(
 )
 
 
-def log_success_callback(context):
+def log_success_callback(context: dict[str, Any]) -> None:
     """Logging success with loguru"""
     ti: TaskInstance = context.get('task_instance')
 
@@ -36,7 +43,7 @@ def log_success_callback(context):
     )
 
 
-def log_failure_callback(context):
+def log_failure_callback(context: dict[str, Any]) -> None:
     """Logging error with loguru"""
     ti: TaskInstance = context.get('task_instance')
     exception = context.get('exception')
@@ -44,7 +51,7 @@ def log_failure_callback(context):
     logger.error(f'Task Failed: {ti.task_id} | DAG: {ti.dag_id} | Error: {exception}')
 
 
-def log_start_callback(context):
+def log_start_callback(context: dict[str, Any]) -> None:
     """Info log of execution of the task with loguru"""
     ti: TaskInstance = context.get('task_instance')
 

@@ -16,7 +16,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   airflow-init:
-    build: ./airflow
+    build: .
     env_file:
       - .env
     depends_on:
@@ -33,16 +33,16 @@ services:
     command: >
       bash -c "airflow db migrate &&
       airflow users create
-      --username admin
-      --password admin
-      --firstname Admin
-      --lastname User
+      --username $AIRFLOW_ADMIN_USER
+      --password $AIRFLOW_ADMIN_PASSWORD
+      --firstname $AIRFLOW_ADMIN_FIRSTNAME
+      --lastname $AIRFLOW_ADMIN_LASTNAME
       --role Admin
-      --email admin@example.com
+      --email $AIRFLOW_ADMIN_EMAIL
       || true"
 
   airflow-webserver:
-    build: ./airflow
+    build: .
     env_file:
       - .env
     depends_on:
@@ -64,7 +64,7 @@ services:
     restart: always
 
   airflow-scheduler:
-    build: ./airflow
+    build: .
     env_file:
       - .env
     depends_on:
