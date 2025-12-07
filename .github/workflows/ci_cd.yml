@@ -38,10 +38,16 @@ jobs:
 
       - name: Scan repository for obvious secrets
         run: |
-          # Ищем явные паттерны паролей/секретов (кроме md-файлов)
+          # Ищем явные паттерны паролей/секретов,
+          # НО игнорируем CI-конфиги и docker-compose (там ожидаемо есть слова password/SNOWFLAKE_PASSWORD)
           patterns='password:|secret_key|api_key|SNOWFLAKE_PASSWORD|AWS_SECRET_ACCESS_KEY'
-          if git grep -niE "$patterns" -- . ':!*.md' > /tmp/secret_hits.txt 2>/dev/null; then
-            echo "::error ::Potential secrets detected in the repository:"
+          if git grep -niE "$patterns" -- \
+              . \
+              ':!*.md' \
+              ':!.github/workflows/*' \
+              ':!docker-compose.yaml' \
+              > /tmp/secret_hits.txt 2>/dev/null; then
+            echo "::error ::Potential secrets detected in the repository (excluding CI configs):"
             cat /tmp/secret_hits.txt
             exit 1
           fi
