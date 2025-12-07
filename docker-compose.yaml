@@ -16,7 +16,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   airflow-init:
-    build: ./airflow
+    build: .
     env_file:
       - .env
     depends_on:
@@ -42,7 +42,7 @@ services:
       || true"
 
   airflow-webserver:
-    build: ./airflow
+    build: .
     env_file:
       - .env
     depends_on:
@@ -64,7 +64,7 @@ services:
     restart: always
 
   airflow-scheduler:
-    build: ./airflow
+    build: .
     env_file:
       - .env
     depends_on:
