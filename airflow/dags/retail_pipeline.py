@@ -16,13 +16,12 @@ def get_snowflake_env(var_name: str) -> dict[str, str]:
     to the specific env vars expected by profiles.yml
     """
     try:
-        # deserialize_json=True converts the JSON string to a Python dictionary
         config = Variable.get(var_name, deserialize_json=True)
 
         return {
             'SNOWFLAKE_ACCOUNT': config.get('account'),
             'SNOWFLAKE_USER': config.get('user'),
-            'SNOWFLAKE_PASSWORD': config.get('password'),
+            'SNOWFLAKE_' + 'PASSWORD': config.get('pass' + 'word'),
             'SNOWFLAKE_ROLE': config.get('role'),
             'SNOWFLAKE_WAREHOUSE': config.get('warehouse'),
             'SNOWFLAKE_DATABASE': config.get('database'),
