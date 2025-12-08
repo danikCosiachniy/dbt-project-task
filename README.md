@@ -67,7 +67,7 @@ docker-compose up -d
   - **Login/Password:** As defined in your `.env` (default: `admin`/`admin`).
 
 ### 4\. Project Structure
-
+```text
 .
 ├── airflow/                         # Airflow-specific project area
 │   ├── dags/
@@ -94,6 +94,7 @@ docker-compose up -d
 ├── uv.lock                          # uv lockfile
 ├── scripts/                         # Utility scripts (optional)
 └── README.md                        # You are here
+```
 
 ### 5\. Development & Dependency Workflow
 
