@@ -7,6 +7,7 @@ from cosmos import DbtTaskGroup, ExecutionConfig, ProfileConfig, ProjectConfig
 
 from airflow import DAG
 from airflow.models import Variable
+from utils.constants import DBT_PROJECT_PATH
 from utils.dbt_logger import log_failure_callback, log_start_callback, log_success_callback
 
 
@@ -31,9 +32,6 @@ def get_snowflake_env(var_name: str) -> dict[str, str]:
         print(f'Warning: Could not fetch variable {var_name}: {e}')
         return {}
 
-
-# Absolute path to the mounted dbt project inside the Airflow container
-DBT_PROJECT_PATH: str = '/opt/airflow/dbt_project'
 
 # dbt profile configuration (points to profiles.yml inside the project)
 profile_config: ProfileConfig = ProfileConfig(

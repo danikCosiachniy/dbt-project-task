@@ -4,6 +4,7 @@ from typing import Any
 from loguru import logger
 
 from airflow.models import TaskInstance
+from utils.constants import LOG_FILE_PATH
 
 # Remove default Loguru handler to avoid duplicate logs
 logger.remove()
@@ -16,9 +17,6 @@ logger.add(
     '<cyan>{function}</cyan> - <level>{message}</level>',
     level='INFO',
 )
-
-# Path to the central dbt/Airflow log file inside the container
-LOG_FILE_PATH: str = '/opt/airflow/logs/dbt_pipeline.log'
 
 # File handler: structured JSON logs with rotation & compression
 logger.add(
