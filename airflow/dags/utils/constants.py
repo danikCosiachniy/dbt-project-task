@@ -2,3 +2,5 @@
 DBT_PROJECT_PATH: str = '/opt/airflow/dbt_project'
 # Path to the central dbt/Airflow log file inside the container
 LOG_FILE_PATH: str = '/opt/airflow/logs/dbt_pipeline.log'
+# The name of variable in Airflow with your creeds
+VAR_NAME: str = 'dbt_snowflake_secrets'
