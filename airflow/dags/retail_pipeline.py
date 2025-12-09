@@ -21,7 +21,7 @@ def get_snowflake_env(var_name: str) -> dict[str, str]:
         return {
             'SNOWFLAKE_ACCOUNT': config.get('account'),
             'SNOWFLAKE_USER': config.get('user'),
-            'SNOWFLAKE_' + 'PASSWORD': config.get('pass' + 'word'),
+            'SNOWFLAKE_PASSWORD': config.get('password'),  # nosec
             'SNOWFLAKE_ROLE': config.get('role'),
             'SNOWFLAKE_WAREHOUSE': config.get('warehouse'),
             'SNOWFLAKE_DATABASE': config.get('database'),
