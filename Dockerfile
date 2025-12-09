@@ -1,10 +1,9 @@
 FROM apache/airflow:2.10.3-python3.11
 
 USER root
-RUN apt-get update && \
-    apt-get install -y git && \
-    apt-get clean
-
+RUN apt-get update && apt-get install -y git && apt-get clean
 USER airflow
-COPY requirements.txt /requirements.txt
-RUN pip install --no-cache-dir -r /requirements.txt
+WORKDIR /opt/airflow
+RUN pip install --no-cache-dir uv
+COPY pyproject.toml uv.lock ./
+RUN uv pip install -r pyproject.toml

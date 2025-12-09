@@ -3,12 +3,11 @@ name = "retail_vault"
 version = "0.1.0"
 description = "Retail Data Vault pipeline with Airflow, dbt and DuckDB"
 readme = "README.md"
-requires-python = "==3.11"
+requires-python = ">=3.11,<3.12"
 dependencies = [
     "apache-airflow==2.10.3",
-    "apache-airflow-providers-snowflake",
     "apache-airflow-providers-openlineage==1.8.0",
-    "astronomer-cosmos==1.5.0",
+    "astronomer-cosmos==1.11.2",
     "dbt-core==1.7.10",
     "dbt-duckdb==1.7.1",
     "dbt-snowflake==1.7.0",
@@ -17,14 +16,14 @@ dependencies = [
     "opentelemetry-api==1.22.0",
     "opentelemetry-exporter-otlp==1.22.0",
     "opentelemetry-sdk==1.22.0",
-    "pandas==2.0.0",
+    "pandas==2.1.2",
     "pyyaml==6.0",
-    "tqdm==4.66",
+    "tqdm==4.66.0",
 ]
 
 [dependency-groups]
 dev = [
-    "black==24.0.0",
+    "black==24.4.2",
     "pre-commit==3.5.0",
     "pytest==8.0.0",
     "ruff==0.3.0",
