@@ -26,7 +26,7 @@ services:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/plugins:/opt/airflow/plugins
       - ./airflow/logs:/opt/airflow/logs
-      - ./dbt_project:/opt/airflow/dbt_project
+      - ./dbt_vault_retail:/opt/airflow/dbt_project
     environment:
       - AIRFLOW_VAR_DBT_PROJECT_DIR=/opt/airflow/dbt_project
       - AIRFLOW_VAR_DBT_PROFILES_DIR=/opt/airflow/dbt_project
@@ -54,7 +54,7 @@ services:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/plugins:/opt/airflow/plugins
       - ./airflow/logs:/opt/airflow/logs
-      - ./dbt_project:/opt/airflow/dbt_project
+      - ./dbt_vault_retail:/opt/airflow/dbt_project
     environment:
       - AIRFLOW_VAR_DBT_PROJECT_DIR=/opt/airflow/dbt_project
       - AIRFLOW_VAR_DBT_PROFILES_DIR=/opt/airflow/dbt_project
@@ -76,7 +76,7 @@ services:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/plugins:/opt/airflow/plugins
       - ./airflow/logs:/opt/airflow/logs
-      - ./dbt_project:/opt/airflow/dbt_project
+      - ./dbt_vault_retail:/opt/airflow/dbt_project
     environment:
       - AIRFLOW_VAR_DBT_PROJECT_DIR=/opt/airflow/dbt_project
       - AIRFLOW_VAR_DBT_PROFILES_DIR=/opt/airflow/dbt_project

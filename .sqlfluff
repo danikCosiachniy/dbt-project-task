@@ -13,6 +13,6 @@ spacing_before = touch
 line_position = leading
 
 [sqlfluff:templater:dbt]
-project_dir = ./dbt_project
-profiles_dir = ./dbt_project
+project_dir = ./dbt_vault_retail
+profiles_dir = ./dbt_vault_retail
 target = snowflake

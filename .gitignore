@@ -3,10 +3,10 @@ __pycache__/
 .venv
 .uv
 
-dbt_project/dbt_packages/
-dbt_project/target/
-dbt_project/logs/
-dbt_project/.user.yml
+dbt_vault_retail/dbt_packages/
+dbt_vault_retail/target/
+dbt_vault_retail/logs/
+dbt_vault_retail/.user.yml
 
 airflow/logs/
 airflow/airflow.db

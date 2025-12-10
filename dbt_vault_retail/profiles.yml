@@ -3,7 +3,7 @@ retail_vault_profile:
   outputs:
     dev:
       type: duckdb
-      path: '/opt/airflow/dbt_project/my_db.duckdb'
+      path: '/opt/airflow/dbt_vault_retail/my_db.duckdb'
       threads: 1
     snowflake:
       type: snowflake

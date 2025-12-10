@@ -83,7 +83,7 @@ jobs:
     needs: lint
     defaults:
       run:
-        working-directory: ./dbt_project
+        working-directory: ./dbt_vault_retail
 
     steps:
       - name: Checkout code
