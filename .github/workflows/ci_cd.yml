@@ -38,17 +38,25 @@ jobs:
 
       - name: Scan repository for obvious secrets
         run: |
-          # Ищем явные паттерны паролей/секретов,
-          # НО игнорируем CI-конфиги и docker-compose (там ожидаемо есть слова password/SNOWFLAKE_PASSWORD)
-          patterns='password:|secret_key|api_key|SNOWFLAKE_PASSWORD|AWS_SECRET_ACCESS_KEY'
-          if git grep -niE "$patterns" -- \
-              . \
-              ':!*.md' \
-              ':!.github/workflows/*' \
-              ':!docker-compose.yaml' \
-              > /tmp/secret_hits.txt 2>/dev/null; then
-            echo "::error ::Potential secrets detected in the repository (excluding CI configs):"
-            cat /tmp/secret_hits.txt
+          # Ищем явные паттерны паролей/секретов
+          patterns='password|secret_key|api_key|AWS_SECRET_ACCESS_KEY|SNOWFLAKE_PASSWORD'
+
+          # Сырые попадания (кроме доки, CI и docker-compose)
+          raw_hits="$(git grep -niE "$patterns" -- \
+            . \
+            ':!*.md' \
+            ':!.github/workflows/*' \
+            ':!docker-compose.yaml' \
+            || true)"
+
+          # Отбрасываем заведомо безопасные случаи:
+          #  - env_var('SNOWFLAKE_PASSWORD', ...) в dbt profiles
+          #  - config.get('password') в Airflow DAG'е
+          filtered_hits="$(printf "%s\n" "$raw_hits" | grep -Ev 'env_var..SNOWFLAKE_PASSWORD|config\.get..password.' || true)"
+
+          if [ -n "$filtered_hits" ]; then
+            echo "::error ::Potential secrets detected in the repository (excluding known-safe patterns):"
+            printf "%s\n" "$filtered_hits"
             exit 1
           fi
           echo "No obvious secrets detected."
