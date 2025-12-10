@@ -3,7 +3,7 @@ __pycache__
 logs/
 plugins/
 dags/
-dbt_project/
+dbt_vault_retail/
 *.duckdb
 *.db
 .git

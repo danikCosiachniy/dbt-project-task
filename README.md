@@ -39,6 +39,7 @@ SNOWFLAKE_ROLE=your_role
 SNOWFLAKE_WAREHOUSE=your_wh
 SNOWFLAKE_DATABASE=your_db
 SNOWFLAKE_SCHEMA=your_schema
+DBT_TARGET=dev       # or snowflake
 ```
 
 ### 2\. Build & Run
