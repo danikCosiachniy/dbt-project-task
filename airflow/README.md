@@ -1,18 +1,17 @@
-### 2. Файл `airflow/README.md`
-
-```markdown
 # Airflow Orchestration
 
-В этой директории содержится конфигурация DAG-ов. Мы используем библиотеку **Astronomer Cosmos**, чтобы автоматически рендерить dbt-проект как задачи внутри Airflow.
+This directory contains the DAG configurations. We use the **Astronomer Cosmos** library to automatically render the dbt project as tasks within Airflow.
 
-## Структура
-- **`dags/retail_pipeline.py`**: Основной DAG. Использует `ExecutionConfig` и `ProjectConfig` из Cosmos для запуска dbt-моделей в том же окружении Docker.
-- **`dags/utils/`**: Вспомогательные скрипты (логгеры и утилиты).
-- **`plugins/`**: Кастомные плагины Airflow (если потребуются).
-- **`logs/`**: Логи выполнения (пробрасываются из контейнера, добавлены в `.gitignore`).
+## Structure
 
-## Как это работает
-1. Docker контейнер устанавливает зависимости из `pyproject.toml` (включая `dbt-core`, `dbt-duckdb` и т.д.) в системный Python.
-2. Airflow запускает DAG.
-3. Cosmos находит папку `dbt_project` (через переменную `AIRFLOW_VAR_DBT_PROJECT_DIR`) и строит граф задач на основе `dbt_project.yml`.
-4. Задачи выполняются локально внутри воркера Airflow.
+- **`dags/retail_pipeline.py`**: The main DAG. Uses `ExecutionConfig` and `ProjectConfig` from Cosmos to run dbt models in the same Docker environment.
+- **`dags/utils/`**: Auxiliary scripts (loggers and utilities).
+- **`plugins/`**: Custom Airflow plugins (if required).
+- **`logs/`**: Execution logs (mapped from the container, added to `.gitignore`).
+
+## How it works
+
+1. The Docker container installs dependencies from `pyproject.toml` (including `dbt-core`, `dbt-duckdb`, etc.) into the system Python.
+2. Airflow triggers the DAG.
+3. Cosmos locates the `dbt_project` folder (via the `AIRFLOW_VAR_DBT_PROJECT_DIR` variable) and builds the task graph based on `dbt_project.yml`.
+4. Tasks are executed locally within the Airflow worker.
