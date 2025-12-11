@@ -1,26 +1,57 @@
-name: 'retail_vault'
-version: '1.0.0'
+name: "dbt_vault_retail"
+version: "1.0.0"
 config-version: 2
 
-profile: 'retail_vault_profile'
+profile: "retail_vault"
 
 model-paths: ["models"]
 seed-paths: ["seeds"]
-test-paths: ["tests"]
-analysis-paths: ["analysis"]
 macro-paths: ["macros"]
-
-target-path: "target"
-clean-targets: ["target", "dbt_packages", "logs"]
-
-seeds:
-  retail_vault:
+test-paths: ["tests"]
 
 models:
-  retail_vault:
+  dbt_vault_retail:
+
     staging:
+      +schema: stg
       +materialized: view
+
     raw_vault:
+      +schema: raw_vault
       +materialized: incremental
+
+      hubs:
+        +tags: ["raw_vault", "hub"]
+
+      links:
+        +tags: ["raw_vault", "link"]
+
+      sats:
+        +tags: ["raw_vault", "sat"]
+
+    buisness_vault:
+      +schema: business_vault
+      +materialized: incremental
+
+      sats:
+        +tags: ["business_vault", "sat"]
+
+      pit:
+        +tags: ["business_vault", "pit"]
+
+      bridges:
+        +tags: ["business_vault", "bridge"]
+
     marts:
+      +schema: mart
       +materialized: table
+
+      dim:
+        +tags: ["mart", "dimension"]
+
+      fct:
+        +tags: ["mart", "fact"]
+
+seeds:
+  dbt_vault_retail:
+    +schema: seed

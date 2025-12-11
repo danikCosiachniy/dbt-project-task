@@ -1,0 +1,5 @@
+customer_id,segment,vip_flag,manager_id
+1,RETAIL,true,101
+2,RETAIL,false,102
+3,WHOLESALE,true,103
+4,ONLINE,false,104

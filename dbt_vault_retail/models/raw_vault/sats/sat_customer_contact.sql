@@ -1,16 +1,19 @@
 {{ config(
     materialized='incremental',
-    unique_key=['h_customer_pk', 'load_date', 'record_source'],
+    unique_key=['h_customer_pk', 'effective_from', 'record_source'],
     incremental_strategy='merge',
-    tags=['raw_vault', 'hub']
+    tags=['raw_vault', 'sat', 'high_volatility']
 ) }}
 
 with src as (
     select
-        customer_id as bk_customer_id
+        phone
+        , account_balance
+        , customer_address
+        , null::timestamp as effective_to
         , 'SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.CUSTOMER' as record_source
         , sha2(coalesce(to_varchar(customer_id), ''), 256) as h_customer_pk
-        , current_date() as load_date
+        , current_timestamp() as effective_from
         , current_timestamp() as load_ts
     from {{ ref('stg_customer') }}
 )
@@ -20,9 +23,13 @@ from src
 
 {% if is_incremental() %}
     where
-        load_date
+        effective_from
         > (
-            select coalesce(max(t.load_date), '1900-01-01'::date)
+            select
+                coalesce(
+                    max(t.effective_from)
+                    , '1900-01-01'::timestamp_ntz
+                )
             from {{ this }} as t
         )
 {% endif %}
