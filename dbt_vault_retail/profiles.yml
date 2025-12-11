@@ -1,4 +1,4 @@
-retail_vault_profile:
+retail_vault:
   target: snowflake
   outputs:
     dev:

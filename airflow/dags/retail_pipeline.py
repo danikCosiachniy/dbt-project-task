@@ -65,7 +65,7 @@ DBT_TARGET: DbtTarget = get_dbt_target_from_env()
 
 # dbt profile configuration (points to profiles.yml inside the project)
 profile_config: ProfileConfig = ProfileConfig(
-    profile_name='retail_vault_profile',
+    profile_name='retail_vault',
     target_name=DBT_TARGET,
     profiles_yml_filepath=f'{DBT_PROJECT_PATH}/profiles.yml',
 )
