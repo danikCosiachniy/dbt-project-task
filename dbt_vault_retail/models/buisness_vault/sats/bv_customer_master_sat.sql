@@ -34,6 +34,8 @@ inner join master as m
     on h.bk_customer_id = m.customer_id
 
 {% if is_incremental() %}
-where effective_from >
-      (select coalesce(max(effective_from), '1900-01-01'::timestamp_ntz) from {{ this }})
+    where effective_from > (
+        select coalesce(max(t.effective_from), '1900-01-01'::timestamp_ntz)
+        from {{ this }} as t
+    )
 {% endif %}
