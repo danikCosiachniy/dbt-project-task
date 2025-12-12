@@ -8,7 +8,12 @@ from cosmos import DbtTaskGroup, ExecutionConfig, ProfileConfig, ProjectConfig, 
 from airflow import DAG
 from airflow.providers.snowflake.hooks.snowflake import SnowflakeHook
 from utils.constants import CONN_NAME, DBT_PROJECT_PATH
-from utils.dbt_logger import log_failure_callback, log_start_callback, log_success_callback
+from utils.dbt_logger import (
+    log_dag_success_callback,
+    log_failure_callback,
+    log_start_callback,
+    log_success_callback,
+)
 
 
 def get_env() -> dict[str, str]:
@@ -54,6 +59,7 @@ with DAG(
     schedule_interval='@daily',
     catchup=False,
     default_args=default_args,
+    on_success_callback=log_dag_success_callback,
     tags=['dbt', 'retail', 'snowflake'],
 ) as dag:
     # Fetch credentials before creating tasks
