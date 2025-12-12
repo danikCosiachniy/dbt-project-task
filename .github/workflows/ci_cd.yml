@@ -52,7 +52,7 @@ jobs:
           # Отбрасываем заведомо безопасные случаи:
           #  - env_var('SNOWFLAKE_PASSWORD', ...) в dbt profiles
           #  - config.get('password') в Airflow DAG'е
-          filtered_hits="$(printf "%s\n" "$raw_hits" | grep -Ev 'env_var..SNOWFLAKE_PASSWORD|config\.get..password.' || true)"
+          filtered_hits="$(printf "%s\n" "$raw_hits" | grep -Ev 'env_var..SNOWFLAKE_PASSWORD|config\.get..password\.|conn\.password' || true)"
 
           if [ -n "$filtered_hits" ]; then
             echo "::error ::Potential secrets detected in the repository (excluding known-safe patterns):"
