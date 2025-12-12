@@ -7,10 +7,11 @@ from urllib.parse import urlparse
 from loguru import logger
 
 from airflow.models import Variable
+from utils.constants import VAR_TG_NAME
 
 
-def _get_telegram_config(var_name: str = 'TELEGRAM_ALERTS') -> tuple[str, str]:
-    cfg = Variable.get(var_name, deserialize_json=True)
+def _get_telegram_config() -> tuple[str, str]:
+    cfg = Variable.get(VAR_TG_NAME, deserialize_json=True)
     return cfg['bot_token'], str(cfg['chat_id'])
 
 
