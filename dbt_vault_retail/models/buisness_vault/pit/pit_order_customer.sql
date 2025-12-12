@@ -52,16 +52,11 @@ select
     , 'BUSINESS_VAULT.PIT_ORDER_CUSTOMER' as record_source
     , current_timestamp() as load_ts
 from base as b
-left join cust_pit as cp
-    on
-        b.h_customer_pk = cp.h_customer_pk
-        and b.pit_date = cp.pit_date
-left join order_pit as op
-    on
-        b.h_order_pk = op.h_order_pk
-        and b.pit_date = op.pit_date
+left join cust_pit as cp on b.h_customer_pk = cp.h_customer_pk and b.pit_date = cp.pit_date
+left join order_pit as op on b.h_order_pk = op.h_order_pk and b.pit_date = op.pit_date
 
 {% if is_incremental() %}
-where b.pit_date >
-      (select coalesce(max(pit_date), '1900-01-01') from {{ this }})
+    where b.pit_date > (
+        select coalesce(max(t.pit_date), '1900-01-01') from {{ this }} as t
+    )
 {% endif %}

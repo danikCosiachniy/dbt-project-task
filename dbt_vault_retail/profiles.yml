@@ -1,18 +1,14 @@
 retail_vault:
   target: snowflake
   outputs:
-    dev:
-      type: duckdb
-      path: '/opt/airflow/dbt_vault_retail/my_db.duckdb'
-      threads: 1
     snowflake:
       type: snowflake
-      account: "{{ env_var('SNOWFLAKE_ACCOUNT', 'dummy_account') }}"
-      user: "{{ env_var('SNOWFLAKE_USER', 'dummy_user') }}"
-      password: "{{ env_var('SNOWFLAKE_PASSWORD', 'dummy_password') }}" # nosec
-      role: "{{ env_var('SNOWFLAKE_ROLE', 'dummy_role') }}"
-      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'dummy_warehouse') }}"
-      database: "{{ env_var('SNOWFLAKE_DATABASE', 'dummy_db') }}"
-      schema: "{{ env_var('SNOWFLAKE_SCHEMA', 'dummy_schema') }}"
-      threads: 4
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}" # nosec
+      role: "{{ env_var('SNOWFLAKE_ROLE') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE') }}"
+      schema: "{{ env_var('SNOWFLAKE_SCHEMA') }}"
+      threads: 6
       client_session_keep_alive: False

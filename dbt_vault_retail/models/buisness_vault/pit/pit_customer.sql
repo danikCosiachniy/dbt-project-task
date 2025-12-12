@@ -89,6 +89,7 @@ left join contact_latest as ct on h.h_customer_pk = ct.h_customer_pk
 left join bv_latest as bv on h.h_customer_pk = bv.h_customer_pk
 
 {% if is_incremental() %}
-where d.pit_date >
-      (select coalesce(max(pit_date), '1900-01-01') from {{ this }})
+    where d.pit_date > (
+        select coalesce(max(t.pit_date), '1900-01-01') from {{ this }} as t
+    )
 {% endif %}

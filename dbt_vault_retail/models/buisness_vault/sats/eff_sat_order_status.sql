@@ -46,6 +46,7 @@ select *
 from final
 
 {% if is_incremental() %}
-where effective_from >
-      (select coalesce(max(effective_from), '1900-01-01'::date) from {{ this }})
+    where
+        effective_from
+        > (select coalesce(max(t.effective_from), '1900-01-01'::date) from {{ this }} as t)
 {% endif %}

@@ -38,6 +38,8 @@ with orders as (
 select * from final
 
 {% if is_incremental() %}
-where pit_date >
-      (select coalesce(max(pit_date), '1900-01-01'::date) from {{ this }})
+    where pit_date > (
+        select coalesce(max(t.pit_date), '1900-01-01'::date)
+        from {{ this }} as t
+    )
 {% endif %}
