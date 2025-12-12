@@ -27,13 +27,13 @@ def get_env() -> dict[str, str]:
     extra = conn.extra_dejson or {}
 
     return {
-        'SNOWFLAKE_ACCOUNT': extra.get('account'),
+        'SNOWFLAKE_ACCOUNT': conn.host or extra.get('account'),
         'SNOWFLAKE_USER': conn.login,
         'SNOWFLAKE_PASSWORD': conn.password,  # nosec
         'SNOWFLAKE_ROLE': extra.get('role'),
         'SNOWFLAKE_WAREHOUSE': extra.get('warehouse'),
         'SNOWFLAKE_DATABASE': extra.get('database'),
-        'SNOWFLAKE_SCHEMA': extra.get('schema'),
+        'SNOWFLAKE_SCHEMA': extra.get('schema') or conn.schema,
     }
 
 
@@ -78,6 +78,7 @@ with DAG(
         render_config=RenderConfig(
             # Only resources of type "seed" (customer_master.csv, etc.)
             select=['resource_type:seed'],
+            env_vars=dbt_env,
         ),
         operator_args=common_operator_args,
     )
@@ -89,6 +90,7 @@ with DAG(
         execution_config=ExecutionConfig(dbt_executable_path='dbt'),
         render_config=RenderConfig(
             select=['staging.*'],  # only models under models/staging/**
+            env_vars=dbt_env,
         ),
         operator_args=common_operator_args,
     )
@@ -100,6 +102,7 @@ with DAG(
         execution_config=ExecutionConfig(dbt_executable_path='dbt'),
         render_config=RenderConfig(
             select=['raw_vault.*'],  # only models under models/raw_vault/**
+            env_vars=dbt_env,
         ),
         operator_args=common_operator_args,
     )
@@ -111,6 +114,7 @@ with DAG(
         execution_config=ExecutionConfig(dbt_executable_path='dbt'),
         render_config=RenderConfig(
             select=['buisness_vault.*'],  # only models under models/buisness_vault/**
+            env_vars=dbt_env,
         ),
         operator_args=common_operator_args,
     )
@@ -122,6 +126,7 @@ with DAG(
         execution_config=ExecutionConfig(dbt_executable_path='dbt'),
         render_config=RenderConfig(
             select=['marts.*'],  # only models under models/marts/**
+            env_vars=dbt_env,
         ),
         operator_args=common_operator_args,
     )
