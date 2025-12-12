@@ -6,32 +6,30 @@ from typing import Any
 from cosmos import DbtTaskGroup, ExecutionConfig, ProfileConfig, ProjectConfig, RenderConfig
 
 from airflow import DAG
-from airflow.models import Variable
-from utils.constants import DBT_PROJECT_PATH, VAR_NAME
+from airflow.providers.snowflake.hooks.snowflake import SnowflakeHook
+from utils.constants import CONN_NAME, DBT_PROJECT_PATH
 from utils.dbt_logger import log_failure_callback, log_start_callback, log_success_callback
 
 
 def get_env() -> dict[str, str]:
     """
-    Build env dict for dbt run
-
-    read creds from Airflow Variable <var_name> (JSON) and map to SNOWFLAKE_*.
+    Extract Snowflake credentials from Airflow connection
+    and expose them as environment variables for dbt.
     """
-    try:
-        config = Variable.get(VAR_NAME, deserialize_json=True)
+    hook = SnowflakeHook(CONN_NAME)
+    conn = hook.get_connection(hook.snowflake_conn_id)
 
-        return {
-            'SNOWFLAKE_ACCOUNT': config.get('account'),
-            'SNOWFLAKE_USER': config.get('user'),
-            'SNOWFLAKE_PASSWORD': config.get('password'),  # nosec
-            'SNOWFLAKE_ROLE': config.get('role'),
-            'SNOWFLAKE_WAREHOUSE': config.get('warehouse'),
-            'SNOWFLAKE_DATABASE': config.get('database'),
-            'SNOWFLAKE_SCHEMA': config.get('schema'),
-        }
-    except (KeyError, ValueError) as e:
-        print(f'Warning: Could not fetch variable {VAR_NAME}: {e}')
-        return {}
+    extra = conn.extra_dejson or {}
+
+    return {
+        'SNOWFLAKE_ACCOUNT': extra.get('account'),
+        'SNOWFLAKE_USER': conn.login,
+        'SNOWFLAKE_PASSWORD': conn.password,  # nosec
+        'SNOWFLAKE_ROLE': extra.get('role'),
+        'SNOWFLAKE_WAREHOUSE': extra.get('warehouse'),
+        'SNOWFLAKE_DATABASE': extra.get('database'),
+        'SNOWFLAKE_SCHEMA': extra.get('schema'),
+    }
 
 
 # dbt profile configuration (points to profiles.yml inside the project)
@@ -122,4 +120,4 @@ with DAG(
         operator_args=common_operator_args,
     )
     # Execution order:
-    staging_tg >> dbt_seed >> raw_vault_tg >> buisness_vault_tg >> marts_tg
+    staging_tg >> raw_vault_tg >> dbt_seed >> buisness_vault_tg >> marts_tg
