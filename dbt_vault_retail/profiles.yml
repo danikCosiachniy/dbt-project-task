@@ -1,10 +1,6 @@
 retail_vault:
   target: snowflake
   outputs:
-    dev:
-      type: duckdb
-      path: '/opt/airflow/dbt_vault_retail/my_db.duckdb'
-      threads: 1
     snowflake:
       type: snowflake
       account: "{{ env_var('SNOWFLAKE_ACCOUNT', 'dummy_account') }}"
@@ -14,5 +10,5 @@ retail_vault:
       warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'dummy_warehouse') }}"
       database: "{{ env_var('SNOWFLAKE_DATABASE', 'dummy_db') }}"
       schema: "{{ env_var('SNOWFLAKE_SCHEMA', 'dummy_schema') }}"
-      threads: 4
+      threads: 6
       client_session_keep_alive: False

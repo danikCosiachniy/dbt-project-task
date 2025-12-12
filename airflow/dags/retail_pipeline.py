@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import os
 from datetime import datetime
-from typing import Any, Literal, cast
+from typing import Any
 
 from cosmos import DbtTaskGroup, ExecutionConfig, ProfileConfig, ProjectConfig, RenderConfig
 
@@ -11,62 +10,34 @@ from airflow.models import Variable
 from utils.constants import DBT_PROJECT_PATH, VAR_NAME
 from utils.dbt_logger import log_failure_callback, log_start_callback, log_success_callback
 
-# Allowed dbt targets configured in profiles.yml
-DbtTarget = Literal['snowflake', 'dev']
 
-
-def get_dbt_target_from_env() -> DbtTarget:
+def get_env() -> dict[str, str]:
     """
-    Read dbt target from the DBT_TARGET env var.
+    Build env dict for dbt run
 
-    Valid values:
-      - "snowflake" -> run against Snowflake
-      - "dev"       -> run against DuckDB
-
-    Defaults to "snowflake" if not set or invalid.
+    read creds from Airflow Variable <var_name> (JSON) and map to SNOWFLAKE_*.
     """
-    value = os.getenv('DBT_TARGET', 'snowflake').lower()
-    if value not in ('snowflake', 'dev'):
-        return 'snowflake'
-    return cast(DbtTarget, value)
+    try:
+        config = Variable.get(VAR_NAME, deserialize_json=True)
 
-
-def get_env(target: DbtTarget) -> dict[str, str]:
-    """
-    Build env dict for dbt run, depending on target.
-
-    - dev (DuckDB): no extra env needed → {}
-    - snowflake: read creds from Airflow Variable <var_name> (JSON) and map to SNOWFLAKE_*.
-    """
-    if target == 'dev':
-        # DuckDB uses a local file path only (no credentials)
+        return {
+            'SNOWFLAKE_ACCOUNT': config.get('account'),
+            'SNOWFLAKE_USER': config.get('user'),
+            'SNOWFLAKE_PASSWORD': config.get('password'),  # nosec
+            'SNOWFLAKE_ROLE': config.get('role'),
+            'SNOWFLAKE_WAREHOUSE': config.get('warehouse'),
+            'SNOWFLAKE_DATABASE': config.get('database'),
+            'SNOWFLAKE_SCHEMA': config.get('schema'),
+        }
+    except (KeyError, ValueError) as e:
+        print(f'Warning: Could not fetch variable {VAR_NAME}: {e}')
         return {}
-    if target == 'snowflake':
-        try:
-            config = Variable.get(VAR_NAME, deserialize_json=True)
 
-            return {
-                'SNOWFLAKE_ACCOUNT': config.get('account'),
-                'SNOWFLAKE_USER': config.get('user'),
-                'SNOWFLAKE_PASSWORD': config.get('password'),  # nosec
-                'SNOWFLAKE_ROLE': config.get('role'),
-                'SNOWFLAKE_WAREHOUSE': config.get('warehouse'),
-                'SNOWFLAKE_DATABASE': config.get('database'),
-                'SNOWFLAKE_SCHEMA': config.get('schema'),
-            }
-        except (KeyError, ValueError) as e:
-            print(f'Warning: Could not fetch variable {VAR_NAME}: {e}')
-            return {}
-    return {}
-
-
-# Resolve which dbt target to use (Snowflake or DuckDB) from env
-DBT_TARGET: DbtTarget = get_dbt_target_from_env()
 
 # dbt profile configuration (points to profiles.yml inside the project)
 profile_config: ProfileConfig = ProfileConfig(
     profile_name='retail_vault',
-    target_name=DBT_TARGET,
+    target_name='snowflake',
     profiles_yml_filepath=f'{DBT_PROJECT_PATH}/profiles.yml',
 )
 
@@ -85,10 +56,10 @@ with DAG(
     schedule_interval='@daily',
     catchup=False,
     default_args=default_args,
-    tags=['dbt', 'retail', DBT_TARGET],
+    tags=['dbt', 'retail', 'snowflake'],
 ) as dag:
     # Fetch credentials before creating tasks
-    dbt_env = get_env(DBT_TARGET)
+    dbt_env = get_env()
     # Common operator arguments applied to all dbt tasks
     common_operator_args = {
         'install_deps': True,  # Automatically runs `dbt deps` once
