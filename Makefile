@@ -1,6 +1,9 @@
 DC = docker compose
 PRE_COMMIT = pre-commit
 
+DBT_CONTAINER = airflow-webserver
+RUNNER = python /opt/airflow/dags/utils/dbt_runner.py
+
 .PHONY: help up down restart build logs lint clean
 
 up: ## start containers
@@ -22,15 +25,19 @@ logs: ## watch logs of airflow in realtime
 lint: ## start all linters
 	$(PRE_COMMIT) run --all-files
 
-clean: ## delete temporary files
-	rm -rf dbt_project/*.duckdb
-	rm -rf dbt_project/*.duckdb.wal
-	rm -rf dbt_project/target
-	rm -rf dbt_project/dbt_packages
-	rm -rf dbt_project/logs
-	find . -type d -name "__pycache__" -exec rm -rf {} +
-	@echo "Project is clean"
+initial-load: ## Run Full Refresh (Seeds + Build from scratch)
+	$(DC) exec $(DBT_CONTAINER) $(RUNNER) deps
+	$(DC) exec $(DBT_CONTAINER) $(RUNNER) seed --full-refresh
+	$(DC) exec $(DBT_CONTAINER) $(RUNNER) build --full-refresh
 
+incremental-load: ## Run Incremental Load (Only new data)
+	$(DC) exec $(DBT_CONTAINER) $(RUNNER) deps
+	$(DC) exec $(DBT_CONTAINER) $(RUNNER) build
+
+clean-up: ## Clean artifacts (local & docker)
+	rm -rf dbt_vault_retail/target dbt_vault_retail/dbt_packages dbt_vault_retail/logs
+	find . -type d -name "__pycache__" -exec rm -rf {} +
+	-$(DC) exec $(DBT_CONTAINER) bash -c "cd /opt/airflow/dbt_project && dbt clean"
 
 help:
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
