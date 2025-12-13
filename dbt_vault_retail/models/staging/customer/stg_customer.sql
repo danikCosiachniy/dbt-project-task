@@ -9,4 +9,16 @@ select
     , c_acctbal as account_balance
     , c_mktsegment as market_segment
     , c_comment as customer_comment
+    , sha2(
+        coalesce(to_varchar(c_name), '') || '|'
+        || coalesce(to_varchar(c_mktsegment), '')
+        , 256
+    ) as hd_customer_core
+    , sha2(
+        coalesce(to_varchar(c_phone), '') || '|'
+        || coalesce(to_varchar(c_acctbal), '') || '|'
+        || coalesce(to_varchar(c_address), '')
+        , 256
+    ) as hd_customer_contact
+
 from {{ source('tpch_sf1', 'CUSTOMER') }}
