@@ -29,7 +29,7 @@ models:
       sats:
         +tags: ["raw_vault", "sat"]
 
-    buisness_vault:
+    business_vault:
       +schema: business_vault
       +materialized: incremental
 
