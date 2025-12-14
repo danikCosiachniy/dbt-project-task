@@ -29,7 +29,7 @@ models:
       sats:
         +tags: ["raw_vault", "sat"]
 
-    buisness_vault:
+    business_vault:
       +schema: business_vault
       +materialized: incremental
 
@@ -55,3 +55,8 @@ models:
 seeds:
   dbt_vault_retail:
     +schema: seed
+
+vars:
+  dv_record_source_base:
+    tpch: "SNOWFLAKE_SAMPLE_DATA.TPCH_SF1"
+    seed: "SEED"

@@ -85,13 +85,13 @@ with DAG(
         operator_args=common_operator_args,
     )
     # BUSINESS VAULT
-    buisness_vault_tg = DbtTaskGroup(
-        group_id='buisness_vault',
+    business_vault_tg = DbtTaskGroup(
+        group_id='business_vault',
         project_config=ProjectConfig(DBT_PROJECT_PATH),
         profile_config=profile_config,
         execution_config=ExecutionConfig(dbt_executable_path='dbt'),
         render_config=RenderConfig(
-            select=['buisness_vault.*'],  # only models under models/buisness_vault/**
+            select=['business_vault.*'],  # only models under models/buisness_vault/**
             env_vars=dbt_env,
         ),
         operator_args=common_operator_args,
@@ -109,4 +109,4 @@ with DAG(
         operator_args=common_operator_args,
     )
     # Execution order:
-    staging_tg >> raw_vault_tg >> dbt_seed >> buisness_vault_tg >> marts_tg
+    staging_tg >> raw_vault_tg >> dbt_seed >> business_vault_tg >> marts_tg

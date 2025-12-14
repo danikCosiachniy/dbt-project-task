@@ -1,34 +1,81 @@
 {{ config(materialized='table', tags=['mart', 'fact']) }}
 
-with line as (
-    select * from {{ ref('stg_lineitem') }}
-)
+with lineitem_sat as (
 
-, orders as (
-    select * from {{ ref('stg_orders') }}
-)
-
-, hub_customer as (
     select
-        h_customer_pk
-        , bk_customer_id
-    from {{ ref('hub_customer') }}
+        l_order_lineitem_pk
+        , extended_price
+        , quantity
+        , discount
+    from {{ ref('sat_order_lineitem_measures') }}
+    qualify row_number() over (
+        partition by l_order_lineitem_pk
+        order by load_ts desc
+    ) = 1
+
+)
+
+, lineitem_link as (
+
+    select
+        l_order_lineitem_pk
+        , h_order_pk
+        , h_product_pk
+    from {{ ref('lnk_order_lineitem') }}
+
+)
+
+, hub_product as (
+
+    select
+        h_product_pk
+        , bk_part_id as part_id
+    from {{ ref('hub_product') }}
+
+)
+
+, order_customer as (
+
+    select
+        h_order_pk
+        , h_customer_pk
+        , pit_date
+    from {{ ref('pit_order_customer') }}
+
+)
+
+, order_pit as (
+
+    select
+        h_order_pk
+        , pit_date
+    from {{ ref('pit_order') }}
+
 )
 
 , base as (
+
     select
-        l.order_id
-        , l.line_number
-        , l.part_id
-        , l.extended_price
-        , l.quantity
-        , l.discount
-        , o.order_date::date as order_date
-        , o.customer_id
-        , hc.h_customer_pk
-    from line as l
-    inner join orders as o on l.order_id = o.order_id
-    left join hub_customer as hc on o.customer_id = hc.bk_customer_id
+        l.l_order_lineitem_pk
+        , oc.h_customer_pk
+        , l.h_product_pk
+        , hp.part_id
+        , op.pit_date as order_date
+        , s.extended_price
+        , s.quantity
+        , s.discount
+    from lineitem_link as l
+    inner join lineitem_sat as s
+        on l.l_order_lineitem_pk = s.l_order_lineitem_pk
+    inner join order_pit as op
+        on l.h_order_pk = op.h_order_pk
+    left join order_customer as oc
+        on
+            l.h_order_pk = oc.h_order_pk
+            and op.pit_date = oc.pit_date
+    left join hub_product as hp
+        on l.h_product_pk = hp.h_product_pk
+
 )
 
 , dim_cust as (
@@ -44,9 +91,7 @@ with line as (
 )
 
 select
-    b.order_id
-
-    , b.line_number
+    b.l_order_lineitem_pk as sales_key
     , d.date_key as order_date_key
 
     , dc.customer_key
@@ -55,11 +100,6 @@ select
 
     , b.quantity
     , b.discount
-    , sha2(
-        coalesce(to_varchar(b.order_id), '') || '|'
-        || coalesce(to_varchar(b.line_number), '')
-        , 256
-    ) as sales_key
     , b.extended_price * (1 - b.discount) as net_amount
 from base as b
 left join dim_d as d

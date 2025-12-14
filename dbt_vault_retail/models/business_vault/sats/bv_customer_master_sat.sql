@@ -26,7 +26,7 @@ select
     , m.segment
     , m.vip_flag
     , m.manager_id
-    , 'SEED.CUSTOMER_MASTER' as record_source
+    , {{ record_source('seed', 'CUSTOMER_MASTER') }} as record_source
     , current_timestamp() as effective_from
     , current_timestamp() as load_ts
 from hub as h
