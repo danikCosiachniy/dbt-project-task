@@ -80,7 +80,7 @@ select
     , bv.segment as business_segment
     , bv.vip_flag
     , bv.manager_id
-    , 'BUSINESS_VAULT.PIT_CUSTOMER' as record_source
+    , {{ record_source('tpch', 'CUSTOMER') }} as record_source
     , current_timestamp() as load_ts
 from {{ ref('hub_customer') }} as h
 cross join dates as d

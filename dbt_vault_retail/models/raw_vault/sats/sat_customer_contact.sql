@@ -12,7 +12,7 @@ with src as (
         , customer_address
         , hd_customer_contact as hashdiff
         , null::timestamp as effective_to
-        , 'SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.CUSTOMER' as record_source
+        , {{ record_source('tpch', 'CUSTOMER') }} as record_source
         , sha2(coalesce(to_varchar(customer_id), ''), 256) as h_customer_pk
         , current_timestamp() as load_ts
         , {% if is_incremental() %} current_timestamp() {% else %} '1990-01-01'::timestamp {% endif %} as effective_from

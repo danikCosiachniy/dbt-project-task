@@ -10,7 +10,7 @@ with src as (
         order_id
         , order_status
         , order_date::date as status_change_date
-        , 'SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.ORDERS' as record_source
+        , {{ record_source('tpch', 'ORDERS') }} as record_source
         , sha2(coalesce(to_varchar(order_id), ''), 256) as h_order_pk
     from {{ ref('stg_orders') }}
 )

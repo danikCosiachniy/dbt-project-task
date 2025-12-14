@@ -49,7 +49,7 @@ select
     , cp.business_segment
     , cp.vip_flag
     , op.order_status
-    , 'BUSINESS_VAULT.PIT_ORDER_CUSTOMER' as record_source
+    , {{ record_source('tpch', 'CUSTOMER') }} as record_source
     , current_timestamp() as load_ts
 from base as b
 left join cust_pit as cp on b.h_customer_pk = cp.h_customer_pk and b.pit_date = cp.pit_date

@@ -8,7 +8,7 @@
 with src as (
     select
         customer_id as bk_customer_id
-        , 'SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.CUSTOMER' as record_source
+        , {{ record_source('tpch', 'CUSTOMER') }} as record_source
         , sha2(coalesce(to_varchar(customer_id), ''), 256) as h_customer_pk
         , current_date() as load_date
         , current_timestamp() as load_ts

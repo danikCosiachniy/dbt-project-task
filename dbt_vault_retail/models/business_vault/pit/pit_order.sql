@@ -26,7 +26,7 @@ with orders as (
         o.h_order_pk
         , o.pit_date
         , s.order_status
-        , 'BUSINESS_VAULT.PIT_ORDER' as record_source
+        , {{ record_source('tpch', 'ORDER') }} as record_source
         , current_timestamp() as load_ts
     from orders as o
     left join eff_sat as s

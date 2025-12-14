@@ -8,7 +8,7 @@
 with src as (
     select
         o.order_date as effective_from
-        , 'SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.ORDERS' as record_source
+        , {{ record_source('tpch', 'ORDERS') }} as record_source
         , sha2(
             coalesce(to_varchar(o.order_id), '') || '|'
             || coalesce(to_varchar(o.customer_id), '')
