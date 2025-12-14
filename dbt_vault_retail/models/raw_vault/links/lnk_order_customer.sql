@@ -1,6 +1,6 @@
 {{ config(
     materialized='incremental',
-    unique_key=['l_order_customer_pk', 'effective_from', 'record_source'],
+    unique_key='l_order_customer_pk',
     incremental_strategy='merge',
     tags=['raw_vault', 'link']
 ) }}
@@ -21,17 +21,12 @@ with src as (
 )
 
 select *
-from src
+from src as s
 
 {% if is_incremental() %}
-    where
-        effective_from
-        > (
-            select
-                coalesce(
-                    max(t.effective_from)
-                    , '1900-01-01'::date
-                )
-            from {{ this }} as t
-        )
+    where not exists (
+        select 1
+        from {{ this }} as t
+        where t.l_order_customer_pk = s.l_order_customer_pk
+    )
 {% endif %}
