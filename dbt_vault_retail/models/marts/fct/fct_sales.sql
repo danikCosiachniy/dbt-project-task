@@ -25,6 +25,15 @@ with lineitem_sat as (
 
 )
 
+, hub_product as (
+
+    select
+        h_product_pk
+        , bk_part_id as part_id
+    from {{ ref('hub_product') }}
+
+)
+
 , order_customer as (
 
     select
@@ -50,6 +59,7 @@ with lineitem_sat as (
         l.l_order_lineitem_pk
         , oc.h_customer_pk
         , l.h_product_pk
+        , hp.part_id
         , op.pit_date as order_date
         , s.extended_price
         , s.quantity
@@ -63,6 +73,8 @@ with lineitem_sat as (
         on
             l.h_order_pk = oc.h_order_pk
             and op.pit_date = oc.pit_date
+    left join hub_product as hp
+        on l.h_product_pk = hp.h_product_pk
 
 )
 
