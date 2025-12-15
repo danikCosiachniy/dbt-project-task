@@ -9,16 +9,8 @@ dependencies = [
     "apache-airflow-providers-openlineage==1.8.0",
     "astronomer-cosmos==1.11.2",
     "dbt-core==1.7.10",
-    "dbt-duckdb==1.7.1",
     "dbt-snowflake==1.7.0",
-    "duckdb==1.0.0",
     "loguru==0.7.2",
-    "opentelemetry-api==1.22.0",
-    "opentelemetry-exporter-otlp==1.22.0",
-    "opentelemetry-sdk==1.22.0",
-    "pandas==2.1.2",
-    "pyyaml==6.0",
-    "tqdm==4.66.0",
 ]
 
 [dependency-groups]

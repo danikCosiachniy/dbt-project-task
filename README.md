@@ -1,22 +1,78 @@
 # Retail Data Vault Pipeline
 
-This project is an ETL/ELT pipeline for retail data processing. It implements **Data Vault 2.0** methodology using **dbt** for transformations and **Apache Airflow** (via Astronomer Cosmos) for orchestration.
+This repository contains an ETL/ELT pipeline for retail data processing built using the **Data Vault 2.0** methodology.
+Transformations are implemented with **dbt**, orchestration is handled by **Apache Airflow** using **Astronomer Cosmos** for native dbt integration.
+
+The project is designed to work with **Snowflake** as the analytical warehouse and follows a layered architecture:
+**staging → raw vault → business vault → marts**.
+
+---
 
 ## 🛠 Tech Stack
 
-- **Orchestration:** Apache Airflow 2.10+
-- **Transformation:** dbt Core 1.7+
-- **Database:** Postgres / DuckDB (depending on the profile)
-- **Dependency Management:** `uv` (Astral)
+- **Orchestration:** Apache Airflow 2.10+ (Cosmos)
+- **Transformations:** dbt Core 1.7+
+- **Data Warehouse:** Snowflake
+- **Metadata & Orchestration DB:** Postgres (Airflow)
+- **Dependency Management:** uv (Astral)
 - **Infrastructure:** Docker & Docker Compose
+- **Methodology:** Data Vault 2.0
 
-## 🚀 Quick Start
+---
 
-### 1. Environment Configuration (.env)
+## 🔐 Credentials & Secrets Management
 
-Create a `.env` file in the root of the project and copy the configuration below. These variables are used in `docker-compose.yaml` to initialize the Airflow admin and configure the database.
+⚠️ **Important:** Credentials are **not stored in `.env` files**.
 
-**`.env` example:**
+### Telegram notifications
+Telegram credentials are stored in **Airflow Variables** as a single JSON object:
+
+**Variable name:** `telegram_credentials`
+
+```json
+{
+  "bot_token": "<BOT_TOKEN>",
+  "chat_id": "<CHAT_ID>"
+}
+```
+# 🔐 Credentials & Configuration
+
+These credentials are used by Airflow callbacks and utilities for system notifications.
+
+## ❄️ Snowflake Credentials
+
+Snowflake credentials must be stored in **Airflow Connections** to ensure secure access.
+
+* **Connection ID:** `snowflake_default`
+* **Connection Type:** `Snowflake`
+
+**Required Fields:**
+* `Account`
+* `User`
+* `Password` / `Key`
+* `Role`
+* `Warehouse`
+* `Database`
+* `Schema`
+
+> **Note:** Both **dbt** and **Airflow** rely on this connection via Cosmos and custom dbt runners.
+
+---
+
+# 🚀 Quick Start
+
+Follow these steps to get the project running locally.
+
+### 1. Environment Configuration (`.env`)
+
+Create a `.env` file in the root directory of the project.
+
+**Important:** This file is used **only** for Airflow and Docker infrastructure configuration. It is **not** used for warehouse credentials.
+
+```bash
+# Example command to create .env
+touch .env
+```
 
 ```ini
 AIRFLOW_UID=50000
@@ -27,102 +83,125 @@ AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgr
 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
 
 AIRFLOW_ADMIN_USER=admin
-AIRFLOW_ADMIN_PASSWORD=your_password
+AIRFLOW_ADMIN_PASSWORD=admin
 AIRFLOW_ADMIN_FIRSTNAME=Admin
 AIRFLOW_ADMIN_LASTNAME=User
 AIRFLOW_ADMIN_EMAIL=admin@example.com
-
-SNOWFLAKE_ACCOUNT=your_snowflake_account
-SNOWFLAKE_USER=your_user
-SNOWFLAKE_PASSWORD=your_password
-SNOWFLAKE_ROLE=your_role
-SNOWFLAKE_WAREHOUSE=your_wh
-SNOWFLAKE_DATABASE=your_db
-SNOWFLAKE_SCHEMA=your_schema
-DBT_TARGET=dev       # or snowflake
 ```
+### 2. Build & Run 🛠️
 
-### 2\. Build & Run
+The project is managed via **Makefile** (recommended approach).
 
-Use **Makefile** or `docker-compose` to build and start all services.
-
-#### 🔨 Build & Start (recommended for first run or after dependency updates)
+**Full Rebuild**
+Run this for the first setup or after changing dependencies in `pyproject.toml`
 
 ```bash
 make rebuild
-# or manually:
-docker-compose up -d --build --force-recreate
 ```
-
-#### Start (existing containers)
-
+Equivalent manual command:
+```bash
+docker compose up -d --build --force-recreate
+```
+Start existing containers
 ```bash
 make up
-# or manually:
-docker-compose up -d
 ```
+### 3. Access 🖥️
 
-### 3\. Access
+* **Airflow UI:** [http://localhost:8080](http://localhost:8080)
+* **Login / Password:** Sourced from `.env` (Default: `admin` / `admin`)
 
-  - **Airflow UI:** [http://localhost:8080](https://www.google.com/search?q=http://localhost:8080)
-  - **Login/Password:** As defined in your `.env` (default: `admin`/`admin`).
+## 📂 Project Structure
 
-### 4\. Project Structure
 ```text
 .
-├── airflow/                         # Airflow-specific project area
+├── airflow/                         # Airflow-specific code and configuration
 │   ├── dags/
-│   │   ├── retail_pipeline.py       # Main Airflow DAG using Cosmos
-│   │   └── utils/                   # Utility modules (logging, callbacks, helpers)
+│   │   ├── retail_pipeline.py       # Main DAG (Cosmos-based dbt orchestration)
+│   │   └── utils/                   # Helpers (dbt runner, notifications, callbacks)
 │   ├── logs/                        # Airflow logs (mounted volume)
-│   ├── plugins/                     # (Optional) custom Airflow plugins
-│   └── README.md                    # Docs for Airflow DAGs / plugins
+│   ├── plugins/                     # Optional custom Airflow plugins
+│   └── README.md                    # Airflow-specific documentation
 │
-├── dbt_project/                     # dbt project root
-│   ├── models/                      # dbt models (raw, staging, vault, marts)
-│   ├── macros/                      # dbt macros
-│   ├── seeds/                       # Input CSVs (e.g., raw_orders.csv)
-│   ├── snapshots/                   # dbt snapshots
-│   ├── profiles.yml                 # dbt profile for Snowflake/DuckDB
-│   ├── dbt_project.yml              # dbt project config
-│   └── README.md                    # Documentation for dbt project
+├── dbt_vault_retail/                # dbt project root
+│   ├── models/
+│   │   ├── staging/                 # Source-aligned staging models
+│   │   ├── raw_vault/               # Hubs, Links, Satellites
+│   │   ├── business_vault/          # PITs, effectivity sats, business sats
+│   │   └── marts/                   # Dimensions and facts
+│   ├── macros/                      # Shared dbt macros
+│   ├── seeds/                       # Seed data (e.g. customer_master)
+│   ├── snapshots/                   # dbt snapshots (optional)
+│   ├── profiles.yml                 # dbt profile (uses Airflow connection)
+│   ├── dbt_project.yml              # dbt project configuration
+│   └── README.md                    # dbt-specific documentation
 │
-├── docker-compose.yaml              # Multi-service orchestration (Airflow + Postgres)
-├── Dockerfile                       # Airflow image with dbt & cosmos dependencies
-├── Makefile                         # Shortcuts for build/run commands
-├── pyproject.toml                   # Python project definition (uv/PEP 621)
-├── requirements.txt                 # Exported dependencies for Airflow build
-├── uv.lock                          # uv lockfile
-├── scripts/                         # Utility scripts (optional)
-└── README.md                        # You are here
+├── docker-compose.yaml              # Docker services (Airflow, Postgres)
+├── Dockerfile                       # Custom Airflow image with dbt & Cosmos
+├── Makefile                         # Project commands (build, lint, dbt runs)
+├── pyproject.toml                   # Python dependencies (uv / PEP 621)
+├── requirements.txt                 # Exported deps for Docker build
+├── uv.lock                          # Dependency lockfile
+└── README.md                        # Root documentation (this file)
 ```
 
-### 5\. Development & Dependency Workflow
+## ▶️ Running dbt Pipelines
 
-This project uses `uv` for dependency management.
+All dbt commands are executed inside the Airflow container using a custom runner.
 
-**Adding a new Python library:**
+**Full load** (seeds + full-refresh build)
+```bash
+make initial-load
+```
+**Incremental load**
+```bash
+make incremental-load
+```
+## 🧪 Linting & Quality Checks
 
-1.  Add the dependency into `pyproject.toml`:
+All linters are executed via pre-commit.
 
-    ```toml
-    dependencies = [
-        "new-library>=1.0",
-        ...
-    ]
-    ```
+```bash
+make lint
+```
+**This includes:**
+* Python linting/formatting (`ruff`)
+* SQL linting (`sqlfluff`)
+* YAML & whitespace checks
 
-2.  Export dependencies for Docker:
+---
+## 📦 Dependency Management (uv)
 
-    ```bash
-    uv lock
-    uv export --format requirements.txt --no-dev > requirements.txt
-    ```
+Dependencies are managed with `uv`.
 
-3.  Rebuild your environment:
+**Add a new Python dependency:**
 
-    ```bash
-    make rebuild
-    ```
+1. Edit `pyproject.toml`
+2. Regenerate lockfile and export requirements:
+```bash
+uv lock
+```
+3. Rebuild containers:
+```bash
+make rebuild
+```
+This guarantees consistent versions across:
+* **Airflow**
+* **dbt**
+* **Cosmos**
+* **Local development**
 
-This ensures Airflow, dbt, Cosmos, and your DAGs all use a consistent dependency set.
+---
+## 📌 Notes
+
+* **Warehouse credentials** are **never** stored in code or `.env`.
+* All dbt models follow **Data Vault 2.0** best practices.
+* **Facts and dimensions** are built only from Vault layers, never directly from staging.
+* **PIT tables** provide historical “as-of” business views.
+
+---
+
+## 📎 Related Documentation
+
+* `airflow/README.md` — Airflow DAGs & orchestration details
+* `dbt_vault_retail/README.md` — Data Vault & dbt architecture

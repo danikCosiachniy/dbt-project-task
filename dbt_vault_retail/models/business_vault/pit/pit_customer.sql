@@ -14,7 +14,7 @@ with spine as (
 
 , core_asof as (
     select
-        s.h_customer_pk
+        sp.h_customer_pk
         , sp.pit_date
         , s.customer_name
         , s.market_segment
@@ -32,7 +32,7 @@ with spine as (
 
 , contact_asof as (
     select
-        s.h_customer_pk
+        sp.h_customer_pk
         , sp.pit_date
         , s.phone
         , s.account_balance
@@ -51,7 +51,7 @@ with spine as (
 
 , bv_asof as (
     select
-        s.h_customer_pk
+        sp.h_customer_pk
         , sp.pit_date
         , s.segment
         , s.vip_flag
@@ -76,9 +76,9 @@ select
     , ct.phone
     , ct.account_balance
     , ct.customer_address
-    , bv.segment as business_segment
-    , bv.vip_flag
-    , bv.manager_id
+    , coalesce(bv.segment, 'UNKNOWN') as business_segment
+    , coalesce(bv.vip_flag, false) as vip_flag
+    , coalesce(bv.manager_id, -1) as manager_id
     , {{ record_source('tpch', 'CUSTOMER') }} as record_source
     , current_timestamp() as load_ts
 from spine as sp
