@@ -5,14 +5,14 @@
     tags=['raw_vault', 'link']
 ) }}
 
-with src as (
-    select
-        l_orderkey as order_id
-        , l_linenumber as line_number
-        , l_partkey as part_id
-        , {{ record_source('tpch', 'LINEITEM') }} as record_source
-        , sha2(coalesce(to_varchar(l_orderkey), ''), 256) as h_order_pk
-        , sha2(coalesce(to_varchar(l_partkey), ''), 256) as h_product_pk
+WITH src AS (
+    SELECT
+        l_orderkey AS order_id
+        , l_linenumber AS line_number
+        , l_partkey AS part_id
+        , {{ record_source('tpch', 'LINEITEM') }} AS record_source
+        , sha2(coalesce(to_varchar(l_orderkey), ''), 256) AS h_order_pk
+        , sha2(coalesce(to_varchar(l_partkey), ''), 256) AS h_product_pk
         , sha2(
             coalesce(to_varchar(l_orderkey), '')
             || '|'
@@ -20,20 +20,20 @@ with src as (
             || '|'
             || coalesce(to_varchar(l_partkey), '')
             , 256
-        ) as l_order_lineitem_pk
-        , current_timestamp() as load_ts
-        , current_date() as load_date
-    from {{ source('tpch_sf1', 'LINEITEM') }}
+        ) AS l_order_lineitem_pk
+        , current_timestamp() AS load_ts
+        , current_date() AS load_date
+    FROM {{ source('tpch_sf1', 'LINEITEM') }}
 )
 
-select
+SELECT
     s.l_order_lineitem_pk
     , s.h_order_pk
     , s.h_product_pk
     , s.record_source
     , s.load_ts
     , s.load_date
-from src as s
+FROM src AS s
 
 {% if is_incremental() %}
     left join {{ this }} as t

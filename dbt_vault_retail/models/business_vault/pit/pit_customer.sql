@@ -5,70 +5,70 @@
     tags=['business_vault', 'pit']
 ) }}
 
-with spine as (
-    select distinct
+WITH spine AS (
+    SELECT DISTINCT
         l.h_customer_pk
-        , l.effective_from::date as pit_date
-    from {{ ref('lnk_order_customer') }} as l
+        , l.effective_from::date AS pit_date
+    FROM {{ ref('lnk_order_customer') }} AS l
 )
 
-, core_asof as (
-    select
+, core_asof AS (
+    SELECT
         sp.h_customer_pk
         , sp.pit_date
         , s.customer_name
         , s.market_segment
         , s.effective_from
-    from spine as sp
-    left join {{ ref('sat_customer_core') }} as s
-        on
+    FROM spine AS sp
+    LEFT JOIN {{ ref('sat_customer_core') }} AS s
+        ON
             sp.h_customer_pk = s.h_customer_pk
-            and s.effective_from::date <= sp.pit_date
-    qualify row_number() over (
-        partition by sp.h_customer_pk, sp.pit_date
-        order by s.effective_from desc
+            AND s.effective_from::date <= sp.pit_date
+    QUALIFY row_number() OVER (
+        PARTITION BY sp.h_customer_pk, sp.pit_date
+        ORDER BY s.effective_from DESC
     ) = 1
 )
 
-, contact_asof as (
-    select
+, contact_asof AS (
+    SELECT
         sp.h_customer_pk
         , sp.pit_date
         , s.phone
         , s.account_balance
         , s.customer_address
         , s.effective_from
-    from spine as sp
-    left join {{ ref('sat_customer_contact') }} as s
-        on
+    FROM spine AS sp
+    LEFT JOIN {{ ref('sat_customer_contact') }} AS s
+        ON
             sp.h_customer_pk = s.h_customer_pk
-            and s.effective_from::date <= sp.pit_date
-    qualify row_number() over (
-        partition by sp.h_customer_pk, sp.pit_date
-        order by s.effective_from desc
+            AND s.effective_from::date <= sp.pit_date
+    QUALIFY row_number() OVER (
+        PARTITION BY sp.h_customer_pk, sp.pit_date
+        ORDER BY s.effective_from DESC
     ) = 1
 )
 
-, bv_asof as (
-    select
+, bv_asof AS (
+    SELECT
         sp.h_customer_pk
         , sp.pit_date
         , s.segment
         , s.vip_flag
         , s.manager_id
         , s.effective_from
-    from spine as sp
-    left join {{ ref('bv_customer_master_sat') }} as s
-        on
+    FROM spine AS sp
+    LEFT JOIN {{ ref('bv_customer_master_sat') }} AS s
+        ON
             sp.h_customer_pk = s.h_customer_pk
-            and s.effective_from::date <= sp.pit_date
-    qualify row_number() over (
-        partition by sp.h_customer_pk, sp.pit_date
-        order by s.effective_from desc
+            AND s.effective_from::date <= sp.pit_date
+    QUALIFY row_number() OVER (
+        PARTITION BY sp.h_customer_pk, sp.pit_date
+        ORDER BY s.effective_from DESC
     ) = 1
 )
 
-select
+SELECT
     sp.h_customer_pk
     , sp.pit_date
     , c.customer_name
@@ -76,29 +76,29 @@ select
     , ct.phone
     , ct.account_balance
     , ct.customer_address
-    , coalesce(bv.segment, 'UNKNOWN') as business_segment
-    , coalesce(bv.vip_flag, false) as vip_flag
-    , coalesce(bv.manager_id, -1) as manager_id
-    , {{ record_source('tpch', 'CUSTOMER') }} as record_source
-    , current_timestamp() as load_ts
-from spine as sp
-left join core_asof as c
-    on
+    , coalesce(bv.segment, 'UNKNOWN') AS business_segment
+    , coalesce(bv.vip_flag, FALSE) AS vip_flag
+    , coalesce(bv.manager_id, -1) AS manager_id
+    , {{ record_source('tpch', 'CUSTOMER') }} AS record_source
+    , current_timestamp() AS load_ts
+FROM spine AS sp
+LEFT JOIN core_asof AS c
+    ON
         sp.h_customer_pk = c.h_customer_pk
-        and sp.pit_date = c.pit_date
-left join contact_asof as ct
-    on
+        AND sp.pit_date = c.pit_date
+LEFT JOIN contact_asof AS ct
+    ON
         sp.h_customer_pk = ct.h_customer_pk
-        and sp.pit_date = ct.pit_date
-left join bv_asof as bv
-    on
+        AND sp.pit_date = ct.pit_date
+LEFT JOIN bv_asof AS bv
+    ON
         sp.h_customer_pk = bv.h_customer_pk
-        and sp.pit_date = bv.pit_date
+        AND sp.pit_date = bv.pit_date
 
 {% if is_incremental() %}
-    where
+    WHERE
         sp.pit_date > (
-            select coalesce(max(t.pit_date), '1900-01-01'::date)
-            from {{ this }} as t
+            SELECT coalesce(max(t.pit_date), '1900-01-01'::date)
+            FROM {{ this }} AS t
         )
 {% endif %}

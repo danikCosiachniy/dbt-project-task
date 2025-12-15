@@ -1,98 +1,98 @@
 {{ config(materialized='table', tags=['mart', 'fact']) }}
 
-with lineitem_sat as (
+WITH lineitem_sat AS (
 
-    select
+    SELECT
         l_order_lineitem_pk
         , extended_price
         , quantity
         , discount
-    from {{ ref('sat_order_lineitem_measures') }}
-    qualify row_number() over (
-        partition by l_order_lineitem_pk
-        order by load_ts desc
+    FROM {{ ref('sat_order_lineitem_measures') }}
+    QUALIFY row_number() OVER (
+        PARTITION BY l_order_lineitem_pk
+        ORDER BY load_ts DESC
     ) = 1
 
 )
 
-, lineitem_link as (
+, lineitem_link AS (
 
-    select
+    SELECT
         l_order_lineitem_pk
         , h_order_pk
         , h_product_pk
-    from {{ ref('lnk_order_lineitem') }}
+    FROM {{ ref('lnk_order_lineitem') }}
 
 )
 
-, hub_product as (
+, hub_product AS (
 
-    select
+    SELECT
         h_product_pk
-        , bk_part_id as part_id
-    from {{ ref('hub_product') }}
+        , bk_part_id AS part_id
+    FROM {{ ref('hub_product') }}
 
 )
 
-, order_customer as (
+, order_customer AS (
 
-    select
+    SELECT
         h_order_pk
         , h_customer_pk
         , pit_date
-    from {{ ref('pit_order_customer') }}
+    FROM {{ ref('pit_order_customer') }}
 
 )
 
-, order_pit as (
+, order_pit AS (
 
-    select
+    SELECT
         h_order_pk
         , pit_date
-    from {{ ref('pit_order') }}
+    FROM {{ ref('pit_order') }}
 
 )
 
-, base as (
+, base AS (
 
-    select
+    SELECT
         l.l_order_lineitem_pk
         , oc.h_customer_pk
         , l.h_product_pk
         , hp.part_id
-        , op.pit_date as order_date
+        , op.pit_date AS order_date
         , s.extended_price
         , s.quantity
         , s.discount
-    from lineitem_link as l
-    inner join lineitem_sat as s
-        on l.l_order_lineitem_pk = s.l_order_lineitem_pk
-    inner join order_pit as op
-        on l.h_order_pk = op.h_order_pk
-    left join order_customer as oc
-        on
+    FROM lineitem_link AS l
+    INNER JOIN lineitem_sat AS s
+        ON l.l_order_lineitem_pk = s.l_order_lineitem_pk
+    INNER JOIN order_pit AS op
+        ON l.h_order_pk = op.h_order_pk
+    LEFT JOIN order_customer AS oc
+        ON
             l.h_order_pk = oc.h_order_pk
-            and op.pit_date = oc.pit_date
-    left join hub_product as hp
-        on l.h_product_pk = hp.h_product_pk
+            AND op.pit_date = oc.pit_date
+    LEFT JOIN hub_product AS hp
+        ON l.h_product_pk = hp.h_product_pk
 
 )
 
-, dim_cust as (
-    select * from {{ ref('dim_customer') }}
+, dim_cust AS (
+    SELECT * FROM {{ ref('dim_customer') }}
 )
 
-, dim_prod as (
-    select * from {{ ref('dim_product') }}
+, dim_prod AS (
+    SELECT * FROM {{ ref('dim_product') }}
 )
 
-, dim_d as (
-    select * from {{ ref('dim_date') }}
+, dim_d AS (
+    SELECT * FROM {{ ref('dim_date') }}
 )
 
-select
-    b.l_order_lineitem_pk as sales_key
-    , d.date_key as order_date_key
+SELECT
+    b.l_order_lineitem_pk AS sales_key
+    , d.date_key AS order_date_key
 
     , dc.customer_key
     , dp.product_key
@@ -100,13 +100,13 @@ select
 
     , b.quantity
     , b.discount
-    , b.extended_price * (1 - b.discount) as net_amount
-from base as b
-left join dim_d as d
-    on b.order_date = d.date_key
-left join dim_cust as dc
-    on
+    , b.extended_price * (1 - b.discount) AS net_amount
+FROM base AS b
+LEFT JOIN dim_d AS d
+    ON b.order_date = d.date_key
+LEFT JOIN dim_cust AS dc
+    ON
         b.h_customer_pk = dc.h_customer_pk
-        and b.order_date between dc.valid_from and dc.valid_to
-left join dim_prod as dp
-    on b.part_id = dp.part_id
+        AND b.order_date BETWEEN dc.valid_from AND dc.valid_to
+LEFT JOIN dim_prod AS dp
+    ON b.part_id = dp.part_id

@@ -5,26 +5,26 @@
     tags=['business_vault', 'pit']
 ) }}
 
-with spine as (
-    select distinct
+WITH spine AS (
+    SELECT DISTINCT
         h_order_pk
         , h_customer_pk
-        , effective_from::date as pit_date
-    from {{ ref('lnk_order_customer') }}
+        , effective_from::date AS pit_date
+    FROM {{ ref('lnk_order_customer') }}
 )
 
-select
+SELECT
     s.h_order_pk
     , s.h_customer_pk
     , s.pit_date
-    , {{ record_source('tpch', 'ORDERS') }} as record_source
-    , current_timestamp() as load_ts
-from spine as s
+    , {{ record_source('tpch', 'ORDERS') }} AS record_source
+    , current_timestamp() AS load_ts
+FROM spine AS s
 
 {% if is_incremental() %}
-    where
+    WHERE
         s.pit_date > (
-            select coalesce(max(t.pit_date), '1900-01-01'::date)
-            from {{ this }} as t
+            SELECT coalesce(max(t.pit_date), '1900-01-01'::date)
+            FROM {{ this }} AS t
         )
 {% endif %}
