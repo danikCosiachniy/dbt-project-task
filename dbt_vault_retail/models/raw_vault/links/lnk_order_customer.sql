@@ -5,28 +5,28 @@
     tags=['raw_vault', 'link']
 ) }}
 
-with src as (
-    select
-        o.order_date as effective_from
-        , {{ record_source('tpch', 'ORDERS') }} as record_source
+WITH src AS (
+    SELECT
+        o.order_date AS effective_from
+        , {{ record_source('tpch', 'ORDERS') }} AS record_source
         , sha2(
             coalesce(to_varchar(o.order_id), '') || '|'
             || coalesce(to_varchar(o.customer_id), '')
             , 256
-        ) as l_order_customer_pk
-        , sha2(coalesce(to_varchar(o.order_id), ''), 256) as h_order_pk
-        , sha2(coalesce(to_varchar(o.customer_id), ''), 256) as h_customer_pk
-        , current_timestamp() as load_ts
-    from {{ ref('stg_orders') }} as o
+        ) AS l_order_customer_pk
+        , sha2(coalesce(to_varchar(o.order_id), ''), 256) AS h_order_pk
+        , sha2(coalesce(to_varchar(o.customer_id), ''), 256) AS h_customer_pk
+        , current_timestamp() AS load_ts
+    FROM {{ ref('stg_orders') }} AS o
 )
 
-select *
-from src as s
+SELECT *
+FROM src AS s
 
 {% if is_incremental() %}
-    where not exists (
-        select 1
-        from {{ this }} as t
-        where t.l_order_customer_pk = s.l_order_customer_pk
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM {{ this }} AS t
+        WHERE t.l_order_customer_pk = s.l_order_customer_pk
     )
 {% endif %}

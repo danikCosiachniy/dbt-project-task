@@ -5,23 +5,23 @@
     tags=['raw_vault', 'hub']
 ) }}
 
-with src as (
-    select distinct
-        l_partkey as bk_part_id
-        , {{ record_source('tpch', 'LINEITEM') }} as record_source
-        , sha2(coalesce(to_varchar(l_partkey), ''), 256) as h_product_pk
-        , current_timestamp() as load_ts
-        , current_date() as load_date
-    from {{ source('tpch_sf1', 'LINEITEM') }}
+WITH src AS (
+    SELECT DISTINCT
+        l_partkey AS bk_part_id
+        , {{ record_source('tpch', 'LINEITEM') }} AS record_source
+        , sha2(coalesce(to_varchar(l_partkey), ''), 256) AS h_product_pk
+        , current_timestamp() AS load_ts
+        , current_date() AS load_date
+    FROM {{ source('tpch_sf1', 'LINEITEM') }}
 )
 
-select
+SELECT
     s.bk_part_id
     , s.h_product_pk
     , s.record_source
     , s.load_ts
     , s.load_date
-from src as s
+FROM src AS s
 
 {% if is_incremental() %}
     left join {{ this }} as t

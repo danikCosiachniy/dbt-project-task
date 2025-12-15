@@ -1,20 +1,20 @@
 {{ config(materialized='view', tags=['staging']) }}
 
-select
-    l_orderkey as order_id
-    , l_linenumber as line_number
-    , l_partkey as part_id
-    , l_suppkey as supplier_id
-    , l_quantity as quantity
-    , l_extendedprice as extended_price
-    , l_discount as discount
-    , l_tax as tax
-    , l_returnflag as return_flag
-    , l_linestatus as line_status
-    , l_shipdate as ship_date
-    , l_commitdate as commit_date
-    , l_receiptdate as receipt_date
-    , l_shipinstruct as ship_instruct
-    , l_shipmode as ship_mode
-    , l_comment as line_comment
-from {{ source('tpch_sf1', 'LINEITEM') }}
+SELECT
+    l_orderkey AS order_id
+    , l_linenumber AS line_number
+    , l_partkey AS part_id
+    , l_suppkey AS supplier_id
+    , l_quantity AS quantity
+    , l_extendedprice AS extended_price
+    , l_discount AS discount
+    , l_tax AS tax
+    , l_returnflag AS return_flag
+    , l_linestatus AS line_status
+    , l_shipdate AS ship_date
+    , l_commitdate AS commit_date
+    , l_receiptdate AS receipt_date
+    , l_shipinstruct AS ship_instruct
+    , l_shipmode AS ship_mode
+    , l_comment AS line_comment
+FROM {{ source('tpch_sf1', 'LINEITEM') }}

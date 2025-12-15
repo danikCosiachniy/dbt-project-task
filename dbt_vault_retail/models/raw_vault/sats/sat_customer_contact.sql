@@ -5,45 +5,45 @@
     tags=['raw_vault', 'sat', 'high_volatility']
 ) }}
 
-with customer_business_date as (
-    select
+WITH customer_business_date AS (
+    SELECT
         customer_id
-        , min(order_date)::timestamp as business_effective_from
-    from {{ ref('stg_orders') }}
-    group by customer_id
+        , min(order_date)::timestamp AS business_effective_from
+    FROM {{ ref('stg_orders') }}
+    GROUP BY customer_id
 )
 
-, src as (
-    select
+, src AS (
+    SELECT
         c.phone
         , c.account_balance
         , c.customer_address
-        , c.hd_customer_contact as hashdiff
-        , null::timestamp as effective_to
-        , {{ record_source('tpch', 'CUSTOMER') }} as record_source
-        , sha2(coalesce(to_varchar(c.customer_id), ''), 256) as h_customer_pk
-        , current_timestamp() as load_ts
-        , coalesce(cbd.business_effective_from, current_timestamp()) as effective_from
-    from {{ ref('stg_customer') }} as c
-    left join customer_business_date as cbd
-        on c.customer_id = cbd.customer_id
+        , c.hd_customer_contact AS hashdiff
+        , NULL::timestamp AS effective_to
+        , {{ record_source('tpch', 'CUSTOMER') }} AS record_source
+        , sha2(coalesce(to_varchar(c.customer_id), ''), 256) AS h_customer_pk
+        , current_timestamp() AS load_ts
+        , coalesce(cbd.business_effective_from, current_timestamp()) AS effective_from
+    FROM {{ ref('stg_customer') }} AS c
+    LEFT JOIN customer_business_date AS cbd
+        ON c.customer_id = cbd.customer_id
 )
 
 {% if is_incremental() %}
-    , latest_records as (
-        select
+    , latest_records AS (
+        SELECT
             h_customer_pk
             , record_source
             , hashdiff
-        from {{ this }}
-        qualify row_number() over (
-            partition by h_customer_pk, record_source
-            order by load_ts desc
+        FROM {{ this }}
+        QUALIFY row_number() OVER (
+            PARTITION BY h_customer_pk, record_source
+            ORDER BY load_ts DESC
         ) = 1
     )
 {% endif %}
 
-select
+SELECT
     s.phone
     , s.account_balance
     , s.customer_address
@@ -53,13 +53,13 @@ select
     , s.effective_from
     , s.load_ts
     , s.hashdiff
-from src as s
+FROM src AS s
 {% if is_incremental() %}
-    left join latest_records as l
-        on
+    LEFT JOIN latest_records AS l
+        ON
             s.h_customer_pk = l.h_customer_pk
-            and s.record_source = l.record_source
-    where
-        l.h_customer_pk is null
-        or s.hashdiff != l.hashdiff
+            AND s.record_source = l.record_source
+    WHERE
+        l.h_customer_pk IS NULL
+        OR s.hashdiff != l.hashdiff
 {% endif %}

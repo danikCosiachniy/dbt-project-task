@@ -1,13 +1,13 @@
 {{ config(materialized='view', tags=['staging']) }}
 
-select
-    o_orderkey as order_id
-    , o_custkey as customer_id
-    , o_orderstatus as order_status
-    , o_totalprice as total_price
-    , o_orderdate as order_date
-    , o_orderpriority as order_priority
-    , o_clerk as clerk
-    , o_shippriority as ship_priority
-    , o_comment as order_comment
-from {{ source('tpch_sf1', 'ORDERS') }}
+SELECT
+    o_orderkey AS order_id
+    , o_custkey AS customer_id
+    , o_orderstatus AS order_status
+    , o_totalprice AS total_price
+    , o_orderdate AS order_date
+    , o_orderpriority AS order_priority
+    , o_clerk AS clerk
+    , o_shippriority AS ship_priority
+    , o_comment AS order_comment
+FROM {{ source('tpch_sf1', 'ORDERS') }}

@@ -5,22 +5,22 @@
     tags=['raw_vault', 'sat']
 ) }}
 
-with src as (
-    select
+WITH src AS (
+    SELECT
         sha2(
             coalesce(to_varchar(l_orderkey), '') || '|'
             || coalesce(to_varchar(l_linenumber), '') || '|'
             || coalesce(to_varchar(l_partkey), '')
             , 256
-        ) as l_order_lineitem_pk
+        ) AS l_order_lineitem_pk
 
-        , l_quantity as quantity
-        , l_extendedprice as extended_price
-        , l_discount as discount
-        , l_tax as tax
-        , l_shipdate as ship_date
-        , l_commitdate as commit_date
-        , l_receiptdate as receipt_date
+        , l_quantity AS quantity
+        , l_extendedprice AS extended_price
+        , l_discount AS discount
+        , l_tax AS tax
+        , l_shipdate AS ship_date
+        , l_commitdate AS commit_date
+        , l_receiptdate AS receipt_date
 
         , sha2(
             coalesce(to_varchar(l_quantity), '') || '|'
@@ -31,13 +31,13 @@ with src as (
             || coalesce(to_varchar(l_commitdate), '') || '|'
             || coalesce(to_varchar(l_receiptdate), '')
             , 256
-        ) as hashdiff
+        ) AS hashdiff
 
-        , {{ record_source('tpch', 'LINEITEM') }} as record_source
-        , current_timestamp() as load_ts
-        , current_date() as load_date
-        , cast(null as timestamp) as effective_to
-    from {{ source('tpch_sf1', 'LINEITEM') }}
+        , {{ record_source('tpch', 'LINEITEM') }} AS record_source
+        , current_timestamp() AS load_ts
+        , current_date() AS load_date
+        , cast(NULL AS timestamp) AS effective_to
+    FROM {{ source('tpch_sf1', 'LINEITEM') }}
 )
 
 {% if is_incremental() %}
@@ -54,7 +54,7 @@ with src as (
 )
 {% endif %}
 
-select
+SELECT
     s.l_order_lineitem_pk
     , s.quantity
     , s.extended_price
@@ -68,7 +68,7 @@ select
     , s.load_ts
     , s.load_date
     , s.effective_to
-from src as s
+FROM src AS s
 
 {% if is_incremental() %}
 left join latest as l

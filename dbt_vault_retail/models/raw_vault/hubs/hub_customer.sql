@@ -5,22 +5,22 @@
     tags=['raw_vault', 'hub']
 ) }}
 
-with src as (
-    select distinct
-        customer_id as bk_customer_id
-        , {{ record_source('tpch', 'CUSTOMER') }} as record_source
-        , sha2(coalesce(to_varchar(customer_id), ''), 256) as h_customer_pk
-        , current_timestamp() as load_ts
-    from {{ ref('stg_customer') }}
+WITH src AS (
+    SELECT DISTINCT
+        customer_id AS bk_customer_id
+        , {{ record_source('tpch', 'CUSTOMER') }} AS record_source
+        , sha2(coalesce(to_varchar(customer_id), ''), 256) AS h_customer_pk
+        , current_timestamp() AS load_ts
+    FROM {{ ref('stg_customer') }}
 )
 
-select *
-from src as s
+SELECT *
+FROM src AS s
 
 {% if is_incremental() %}
-    where not exists (
-        select 1
-        from {{ this }} as t
-        where t.h_customer_pk = s.h_customer_pk
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM {{ this }} AS t
+        WHERE t.h_customer_pk = s.h_customer_pk
     )
 {% endif %}

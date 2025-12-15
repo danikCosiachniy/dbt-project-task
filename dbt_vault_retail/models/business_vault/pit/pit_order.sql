@@ -5,38 +5,38 @@
     tags=['business_vault', 'pit']
 ) }}
 
-with base as (
-    select distinct
+WITH base AS (
+    SELECT DISTINCT
         h_order_pk
-        , effective_from::date as pit_date
-    from {{ ref('lnk_order_customer') }}
+        , effective_from::date AS pit_date
+    FROM {{ ref('lnk_order_customer') }}
 )
 
-, eff_sat as (
-    select
+, eff_sat AS (
+    SELECT
         h_order_pk
         , order_status
         , effective_from
         , effective_to
-    from {{ ref('eff_sat_order_status') }}
+    FROM {{ ref('eff_sat_order_status') }}
 )
 
-select
+SELECT
     b.h_order_pk
     , b.pit_date
     , s.order_status
-    , {{ record_source('tpch', 'ORDERS') }} as record_source
-    , current_timestamp() as load_ts
-from base as b
-left join eff_sat as s
-    on
+    , {{ record_source('tpch', 'ORDERS') }} AS record_source
+    , current_timestamp() AS load_ts
+FROM base AS b
+LEFT JOIN eff_sat AS s
+    ON
         b.h_order_pk = s.h_order_pk
-        and b.pit_date between s.effective_from and s.effective_to
+        AND b.pit_date BETWEEN s.effective_from AND s.effective_to
 
 {% if is_incremental() %}
-    where
+    WHERE
         b.pit_date > (
-            select coalesce(max(t.pit_date), '1900-01-01'::date)
-            from {{ this }} as t
+            SELECT coalesce(max(t.pit_date), '1900-01-01'::date)
+            FROM {{ this }} AS t
         )
 {% endif %}

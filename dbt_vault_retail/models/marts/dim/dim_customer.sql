@@ -1,7 +1,7 @@
 {{ config(materialized='table', tags=['mart', 'dimension']) }}
 
-with pit as (
-    select
+WITH pit AS (
+    SELECT
         h_customer_pk
         , pit_date
         , customer_name
@@ -12,13 +12,13 @@ with pit as (
         , business_segment
         , vip_flag
         , manager_id
-    from {{ ref('pit_customer') }}
+    FROM {{ ref('pit_customer') }}
 )
 
-, ranges as (
-    select
+, ranges AS (
+    SELECT
         h_customer_pk
-        , pit_date as valid_from
+        , pit_date AS valid_from
         , customer_name
         , market_segment
         , phone
@@ -27,15 +27,15 @@ with pit as (
         , business_segment
         , vip_flag
         , manager_id
-        , lead(pit_date) over (
-            partition by h_customer_pk
-            order by pit_date
-        ) as next_date
-    from pit
+        , lead(pit_date) OVER (
+            PARTITION BY h_customer_pk
+            ORDER BY pit_date
+        ) AS next_date
+    FROM pit
 )
 
-, final as (
-    select
+, final AS (
+    SELECT
         h_customer_pk
         , valid_from
         , customer_name
@@ -51,10 +51,10 @@ with pit as (
             coalesce(to_varchar(h_customer_pk), '') || '|'
             || coalesce(to_varchar(valid_from), '')
             , 256
-        ) as customer_key
-        , coalesce(next_date - interval '1 day', '9999-12-31'::date) as valid_to
-        , coalesce(next_date is null, false) as is_current
-    from ranges
+        ) AS customer_key
+        , coalesce(next_date - INTERVAL '1 day', '9999-12-31'::date) AS valid_to
+        , coalesce(next_date IS NULL, FALSE) AS is_current
+    FROM ranges
 )
 
-select * from final
+SELECT * FROM final
