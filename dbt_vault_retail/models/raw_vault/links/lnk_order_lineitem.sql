@@ -36,7 +36,9 @@ SELECT
 FROM src AS s
 
 {% if is_incremental() %}
-    left join {{ this }} as t
-        on s.l_order_lineitem_pk = t.l_order_lineitem_pk
-    where t.l_order_lineitem_pk is null
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM {{ this }} AS t
+        WHERE t.l_order_lineitem_pk = s.l_order_lineitem_pk
+    )
 {% endif %}

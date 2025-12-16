@@ -36,7 +36,6 @@ WITH src AS (
         , {{ record_source('tpch', 'LINEITEM') }} AS record_source
         , current_timestamp() AS load_ts
         , current_date() AS load_date
-        , cast(NULL AS timestamp) AS effective_to
     FROM {{ source('tpch_sf1', 'LINEITEM') }}
 )
 
@@ -67,12 +66,14 @@ SELECT
     , s.record_source
     , s.load_ts
     , s.load_date
-    , s.effective_to
 FROM src AS s
 
 {% if is_incremental() %}
-left join latest as l
-    on s.l_order_lineitem_pk = l.l_order_lineitem_pk
-    and s.record_source = l.record_source
-where l.l_order_lineitem_pk is null or s.hashdiff != l.hashdiff
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM latest AS l
+        WHERE s.l_order_lineitem_pk = l.l_order_lineitem_pk
+          AND s.record_source = l.record_source
+          AND s.hashdiff = l.hashdiff
+    )
 {% endif %}
