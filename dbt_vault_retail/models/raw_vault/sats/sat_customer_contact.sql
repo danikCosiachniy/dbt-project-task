@@ -5,28 +5,16 @@
     tags=['raw_vault', 'sat', 'high_volatility']
 ) }}
 
-WITH customer_business_date AS (
-    SELECT
-        customer_id
-        , min(order_date)::timestamp AS business_effective_from
-    FROM {{ ref('stg_orders') }}
-    GROUP BY customer_id
-)
-
-, src AS (
+WITH src AS (
     SELECT
         c.phone
         , c.account_balance
         , c.customer_address
         , c.hd_customer_contact AS hashdiff
-        , NULL::timestamp AS effective_to
         , {{ record_source('tpch', 'CUSTOMER') }} AS record_source
         , sha2(coalesce(to_varchar(c.customer_id), ''), 256) AS h_customer_pk
         , current_timestamp() AS load_ts
-        , coalesce(cbd.business_effective_from, current_timestamp()) AS effective_from
     FROM {{ ref('stg_customer') }} AS c
-    LEFT JOIN customer_business_date AS cbd
-        ON c.customer_id = cbd.customer_id
 )
 
 {% if is_incremental() %}
@@ -47,19 +35,18 @@ SELECT
     s.phone
     , s.account_balance
     , s.customer_address
-    , s.effective_to
     , s.record_source
     , s.h_customer_pk
-    , s.effective_from
     , s.load_ts
     , s.hashdiff
 FROM src AS s
 {% if is_incremental() %}
-    LEFT JOIN latest_records AS l
-        ON
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM latest_records AS l
+        WHERE
             s.h_customer_pk = l.h_customer_pk
             AND s.record_source = l.record_source
-    WHERE
-        l.h_customer_pk IS NULL
-        OR s.hashdiff != l.hashdiff
+            AND s.hashdiff = l.hashdiff
+    )
 {% endif %}

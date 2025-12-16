@@ -21,12 +21,21 @@ WITH master AS (
     FROM {{ ref('hub_customer') }}
 )
 
+, customer_orders AS (
+    SELECT
+        l.h_customer_pk
+        , s.order_date
+    FROM {{ ref('lnk_order_customer') }} AS l
+    INNER JOIN {{ ref('sat_order_core') }} AS s
+        ON l.h_order_pk = s.h_order_pk
+)
+
 , customer_business_date AS (
     SELECT
-        customer_id
+        h_customer_pk
         , min(order_date)::date AS business_effective_from
-    FROM {{ ref('stg_orders') }}
-    GROUP BY customer_id
+    FROM customer_orders
+    GROUP BY h_customer_pk
 )
 
 , src AS (
@@ -48,7 +57,7 @@ WITH master AS (
     INNER JOIN master AS m
         ON try_to_number(h.bk_customer_id) = try_to_number(m.customer_id)
     LEFT JOIN customer_business_date AS cbd
-        ON try_to_number(m.customer_id) = try_to_number(cbd.customer_id)
+        ON h.h_customer_pk = cbd.h_customer_pk
 )
 
 {% if is_incremental() %}
@@ -77,11 +86,12 @@ SELECT
 FROM src AS s
 
 {% if is_incremental() %}
-    LEFT JOIN latest AS l
-        ON
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM latest AS l
+        WHERE
             s.h_customer_pk = l.h_customer_pk
             AND s.record_source = l.record_source
-    WHERE
-        l.h_customer_pk IS NULL
-        OR s.hashdiff != l.hashdiff
+            AND s.hashdiff = l.hashdiff
+    )
 {% endif %}

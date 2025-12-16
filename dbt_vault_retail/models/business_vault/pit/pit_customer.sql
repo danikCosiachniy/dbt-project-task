@@ -18,15 +18,13 @@ WITH spine AS (
         , sp.pit_date
         , s.customer_name
         , s.market_segment
-        , s.effective_from
+        , s.load_ts
     FROM spine AS sp
     LEFT JOIN {{ ref('sat_customer_core') }} AS s
-        ON
-            sp.h_customer_pk = s.h_customer_pk
-            AND s.effective_from::date <= sp.pit_date
+        ON sp.h_customer_pk = s.h_customer_pk
     QUALIFY row_number() OVER (
         PARTITION BY sp.h_customer_pk, sp.pit_date
-        ORDER BY s.effective_from DESC
+        ORDER BY s.load_ts DESC
     ) = 1
 )
 
@@ -37,15 +35,13 @@ WITH spine AS (
         , s.phone
         , s.account_balance
         , s.customer_address
-        , s.effective_from
+        , s.load_ts
     FROM spine AS sp
     LEFT JOIN {{ ref('sat_customer_contact') }} AS s
-        ON
-            sp.h_customer_pk = s.h_customer_pk
-            AND s.effective_from::date <= sp.pit_date
+        ON sp.h_customer_pk = s.h_customer_pk
     QUALIFY row_number() OVER (
         PARTITION BY sp.h_customer_pk, sp.pit_date
-        ORDER BY s.effective_from DESC
+        ORDER BY s.load_ts DESC
     ) = 1
 )
 

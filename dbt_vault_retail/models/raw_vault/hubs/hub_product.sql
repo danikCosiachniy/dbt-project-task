@@ -24,7 +24,9 @@ SELECT
 FROM src AS s
 
 {% if is_incremental() %}
-    left join {{ this }} as t
-        on s.h_product_pk = t.h_product_pk
-    where t.h_product_pk is null
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM {{ this }} AS t
+        WHERE t.h_product_pk = s.h_product_pk
+    )
 {% endif %}
