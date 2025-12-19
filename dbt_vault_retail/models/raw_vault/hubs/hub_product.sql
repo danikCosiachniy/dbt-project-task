@@ -1,27 +1,20 @@
 {{ config(
     materialized='incremental',
-    incremental_strategy='merge',
-    unique_key=['h_product_pk'],
+    incremental_strategy='append',
     tags=['raw_vault', 'hub']
 ) }}
 
 WITH src AS (
-    SELECT DISTINCT
-        l_partkey AS bk_part_id
-        , {{ record_source('tpch', 'LINEITEM') }} AS record_source
-        , sha2(coalesce(to_varchar(l_partkey), ''), 256) AS h_product_pk
-        , current_timestamp() AS load_ts
-        , current_date() AS load_date
-    FROM {{ source('tpch_sf1', 'LINEITEM') }}
+    SELECT
+        part_id AS bk_part_id
+        , h_product_pk
+        , record_source
+        , load_ts
+    FROM {{ ref('stg_lineitem') }}
 )
 
-SELECT
-    s.bk_part_id
-    , s.h_product_pk
-    , s.record_source
-    , s.load_ts
-    , s.load_date
-FROM src AS s
+SELECT *
+FROM src
 
 {% if is_incremental() %}
     WHERE NOT EXISTS (
