@@ -6,3 +6,5 @@ LOG_FILE_PATH: str = '/opt/airflow/logs/dbt_pipeline.log'
 CONN_NAME: str = 'snowflake_default'
 # The name of variable with tg creeds
 VAR_TG_NAME = 'tg_secrets'
+# The name of flag is initial or incremental load
+FLAG_NAME = 'retail_vault_initialized'

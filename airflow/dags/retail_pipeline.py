@@ -6,6 +6,8 @@ from typing import Any
 from cosmos import DbtTaskGroup, ExecutionConfig, ProfileConfig, ProjectConfig, RenderConfig
 
 from airflow import DAG
+from airflow.operators.python import PythonOperator
+from airflow.utils.trigger_rule import TriggerRule
 from utils.constants import DBT_PROJECT_PATH
 from utils.dbt_logger import (
     log_dag_success_callback,
@@ -14,6 +16,7 @@ from utils.dbt_logger import (
     log_success_callback,
 )
 from utils.get_creeds import get_env
+from utils.load_mode import get_flag, set_initialized_flag
 
 # dbt profile configuration (points to profiles.yml inside the project)
 profile_config: ProfileConfig = ProfileConfig(
@@ -45,7 +48,7 @@ with DAG(
     # Common operator arguments applied to all dbt tasks
     common_operator_args = {
         'install_deps': True,  # Automatically runs `dbt deps` once
-        'full_refresh': False,  # Uses incremental logic where defined
+        'full_refresh': get_flag(),  # Uses incremental logic where defined
         'env': dbt_env,
     }
     dbt_seed = DbtTaskGroup(
@@ -108,5 +111,10 @@ with DAG(
         ),
         operator_args=common_operator_args,
     )
+    set_flag = PythonOperator(
+        task_id='set_initialized_true',
+        python_callable=set_initialized_flag,
+        trigger_rule=TriggerRule.ALL_SUCCESS,
+    )
     # Execution order:
-    staging_tg >> raw_vault_tg >> dbt_seed >> business_vault_tg >> marts_tg
+    staging_tg >> raw_vault_tg >> dbt_seed >> business_vault_tg >> marts_tg >> set_flag
