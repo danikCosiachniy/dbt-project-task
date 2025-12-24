@@ -31,3 +31,17 @@ def set_initialized_flag() -> None:
     :rtype: None
     """
     Variable.set(FLAG_NAME, 'true')
+
+
+def set_initialized_false() -> None:
+    """
+    Reset the Data Vault initialization flag.
+
+    This function sets the Airflow Variable defined by ``FLAG_NAME`` to the string
+    value ``"false"``. It is typically executed after a clean-up/reset procedure so
+    that the next run of the main DAG performs an initial-load (dbt full-refresh).
+
+    :return: None
+    :rtype: None
+    """
+    Variable.set(FLAG_NAME, 'false')
