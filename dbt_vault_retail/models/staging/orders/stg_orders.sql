@@ -29,5 +29,5 @@ SELECT
         || coalesce(to_varchar(o_custkey), '')
         , 256
     ) AS l_order_customer_pk
-    , current_timestamp() AS load_ts
+    , cast('{{ run_started_at }}' AS timestamp_tz) AS load_ts
 FROM {{ source('tpch_sf1', 'ORDERS') }}

@@ -18,6 +18,15 @@ WITH src AS (
         , load_ts
         , hashdiff
     FROM {{ ref('stg_orders') }}
+
+    {% if is_incremental() %}
+
+    where order_date >= dateadd(
+        day, 0,
+        (select coalesce(max(order_date), to_date('1992-01-01')) from {{ this }})
+
+    )
+    {% endif %}
 )
 
 {% if is_incremental() %}

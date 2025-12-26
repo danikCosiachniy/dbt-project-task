@@ -18,7 +18,7 @@ SELECT
     , l_shipmode AS ship_mode
     , l_comment AS line_comment
     , {{ record_source('tpch', 'LINEITEM') }} AS record_source
-    , current_timestamp() AS load_ts
+    , cast('{{ run_started_at }}' AS timestamp_tz) AS load_ts
     , sha2(coalesce(to_varchar(l_orderkey), ''), 256) AS h_order_pk
     , sha2(coalesce(to_varchar(l_partkey), ''), 256) AS h_product_pk
     , sha2(

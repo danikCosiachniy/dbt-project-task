@@ -16,11 +16,10 @@ WITH src AS (
 
 SELECT *
 FROM src
-
 {% if is_incremental() %}
     WHERE NOT EXISTS (
         SELECT 1
         FROM {{ this }} AS t
-        WHERE t.l_order_lineitem_pk = s.l_order_lineitem_pk
+        WHERE t.l_order_lineitem_pk = src.l_order_lineitem_pk
     )
 {% endif %}

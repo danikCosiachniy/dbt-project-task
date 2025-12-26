@@ -27,6 +27,6 @@ SELECT
         || {{ record_source('tpch', 'CUSTOMER') }}
         , 256
     ) AS hd_customer_contact
-    , current_timestamp() AS load_ts
+    , cast('{{ run_started_at }}' AS timestamp_tz) AS load_ts
 
 FROM {{ source('tpch_sf1', 'CUSTOMER') }}

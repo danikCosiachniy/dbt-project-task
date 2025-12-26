@@ -18,14 +18,21 @@ WITH src AS (
         , record_source
         , load_ts
     FROM {{ ref('stg_lineitem') }}
+
+    {% if is_incremental() %}
+    where ship_date >= dateadd(
+        day, 0,
+        (select coalesce(max(t.ship_date), to_date('1992-01-02')) from {{ this }} as t)
+    )
+    {% endif %}
 )
 
 {% if is_incremental() %}
 , latest as (
     select
-        l_order_lineitem_pk
-        , record_source
-        , hashdiff
+        l_order_lineitem_pk,
+        record_source,
+        hashdiff
     from {{ this }}
     qualify row_number() over (
         partition by l_order_lineitem_pk, record_source
