@@ -124,26 +124,79 @@ WITH pit_src AS (
     FROM asof_joined AS a
 )
 
-SELECT
-    r.h_customer_pk
-    , r.valid_from
-    , r.customer_name
-    , r.market_segment
-    , r.phone
-    , r.account_balance
-    , r.customer_address
-    , r.business_segment
-    , r.vip_flag
-    , r.manager_id
+, new_rows AS (
+    SELECT
+        r.h_customer_pk
+        , r.valid_from
+        , r.customer_name
+        , r.market_segment
+        , r.phone
+        , r.account_balance
+        , r.customer_address
+        , r.business_segment
+        , r.vip_flag
+        , r.manager_id
 
-    , sha2(
-        coalesce(to_varchar(r.h_customer_pk), '') || '|'
-        || coalesce(to_varchar(r.valid_from), '')
-        , 256
-    ) AS customer_key
+        , sha2(
+            coalesce(to_varchar(r.h_customer_pk), '') || '|'
+            || coalesce(to_varchar(r.valid_from), '')
+            , 256
+        ) AS customer_key
 
-    , coalesce(dateadd(DAY, 0, r.next_date), to_date('9999-12-31')) AS valid_to
-    , (r.next_date IS NULL) AS is_current
+        , coalesce(r.next_date, to_date('9999-12-31')) AS valid_to
+        , (r.next_date IS NULL) AS is_current
 
-    , cast('{{ run_started_at }}' AS timestamp_tz) AS load_ts
-FROM ranges AS r
+        , cast('{{ run_started_at }}' AS timestamp_tz) AS load_ts
+    FROM ranges AS r
+)
+
+{% if is_incremental() %}
+    , to_close AS (
+        SELECT
+            t.h_customer_pk
+            , t.valid_from
+            , min(n.valid_from) AS new_valid_from
+        FROM {{ this }} AS t
+        INNER JOIN new_rows AS n
+            ON t.h_customer_pk = n.h_customer_pk
+        WHERE
+            t.is_current = TRUE
+            AND n.valid_from > t.valid_from
+        GROUP BY
+            t.h_customer_pk
+            , t.valid_from
+    )
+
+    , closing_rows AS (
+        SELECT
+            t.h_customer_pk
+            , t.valid_from
+            , t.customer_name
+            , t.market_segment
+            , t.phone
+            , t.account_balance
+            , t.customer_address
+            , t.business_segment
+            , t.vip_flag
+            , t.manager_id
+            , t.customer_key
+
+            , c.new_valid_from AS valid_to
+            , FALSE AS is_current
+
+            , cast('{{ run_started_at }}' AS timestamp_tz) AS load_ts
+        FROM {{ this }} AS t
+        INNER JOIN to_close AS c
+            ON
+                t.h_customer_pk = c.h_customer_pk
+                AND t.valid_from = c.valid_from
+    )
+{% endif %}
+
+{% if is_incremental() %}
+    SELECT * FROM closing_rows
+    UNION ALL
+    SELECT * FROM new_rows
+{% else %}
+SELECT * FROM new_rows
+{% endif %}
