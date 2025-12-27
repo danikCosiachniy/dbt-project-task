@@ -2,9 +2,9 @@
 
 WITH bounds AS (
     SELECT
-        min(pit_date)::date AS min_date
-        , max(pit_date)::date AS max_date
-    FROM {{ ref('pit_order') }}
+        min(order_date)::date AS min_date
+        , max(order_date)::date AS max_date
+    FROM {{ ref('sat_order_core') }}
 )
 
 , dates AS (

@@ -46,6 +46,7 @@ WITH hub_product AS (
 
 SELECT
     part_id
+    , h_product_pk
     , min_price
     , max_price
     , avg_price
