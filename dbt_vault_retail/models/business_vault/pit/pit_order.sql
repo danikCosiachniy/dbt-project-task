@@ -1,42 +1,59 @@
 {{ config(
     materialized='incremental',
-    unique_key=['h_order_pk', 'pit_date'],
-    incremental_strategy='merge',
+    incremental_strategy='append',
     tags=['business_vault', 'pit']
 ) }}
 
-WITH base AS (
+WITH as_of AS (
     SELECT DISTINCT
         h_order_pk
-        , effective_from::date AS pit_date
-    FROM {{ ref('lnk_order_customer') }}
+        , record_source
+        , effective_from AS as_of_ts
+    FROM {{ ref('eff_sat_order_status') }}
+
+    {% if is_incremental() %}
+        WHERE effective_from > (
+            SELECT coalesce(max(t.as_of_ts), to_timestamp_tz('1900-01-01'))
+            FROM {{ this }} AS t
+        )
+    {% endif %}
 )
 
-, eff_sat AS (
+, pit AS (
     SELECT
-        h_order_pk
-        , order_status
-        , effective_from
-        , effective_to
-    FROM {{ ref('eff_sat_order_status') }}
+        a.h_order_pk
+        , a.record_source
+        , a.as_of_ts
+        , e.effective_from AS eff_load_ts
+        , row_number() OVER (
+            PARTITION BY a.h_order_pk, a.record_source, a.as_of_ts
+            ORDER BY e.effective_from DESC
+        ) AS rn
+    FROM as_of AS a
+    LEFT JOIN {{ ref('eff_sat_order_status') }} AS e
+        ON
+            a.h_order_pk = e.h_order_pk
+            AND a.record_source = e.record_source
+            AND a.as_of_ts >= e.effective_from
+            AND a.as_of_ts < e.effective_to
+    QUALIFY rn = 1
 )
 
 SELECT
-    b.h_order_pk
-    , b.pit_date
-    , s.order_status
-    , {{ record_source('tpch', 'ORDERS') }} AS record_source
-    , current_timestamp() AS load_ts
-FROM base AS b
-LEFT JOIN eff_sat AS s
-    ON
-        b.h_order_pk = s.h_order_pk
-        AND b.pit_date BETWEEN s.effective_from AND s.effective_to
+    p.h_order_pk
+    , p.record_source
+    , p.as_of_ts
+    , p.eff_load_ts
+    , cast('{{ run_started_at }}' AS timestamp_tz) AS load_ts
+FROM pit AS p
 
 {% if is_incremental() %}
-    WHERE
-        b.pit_date > (
-            SELECT coalesce(max(t.pit_date), '1900-01-01'::date)
-            FROM {{ this }} AS t
-        )
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM {{ this }} AS t
+        WHERE
+            t.h_order_pk = p.h_order_pk
+            AND t.record_source = p.record_source
+            AND t.as_of_ts = p.as_of_ts
+    )
 {% endif %}

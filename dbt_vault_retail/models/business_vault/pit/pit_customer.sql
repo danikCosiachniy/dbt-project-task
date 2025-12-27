@@ -1,100 +1,139 @@
 {{ config(
     materialized='incremental',
-    unique_key=['h_customer_pk', 'pit_date'],
-    incremental_strategy='merge',
+    incremental_strategy='append',
     tags=['business_vault', 'pit']
 ) }}
 
-WITH spine AS (
+WITH core AS (
+    SELECT
+        h_customer_pk AS hk_customer
+        , load_ts
+    FROM {{ ref('sat_customer_core') }}
+)
+
+, contact AS (
+    SELECT
+        h_customer_pk AS hk_customer
+        , load_ts
+    FROM {{ ref('sat_customer_contact') }}
+)
+
+, master AS (
+    SELECT
+        h_customer_pk AS hk_customer
+        , load_ts
+    FROM {{ ref('bv_customer_master_sat') }}
+)
+
+, as_of_raw AS (
+    SELECT
+        hk_customer
+        , load_ts AS as_of_ts
+    FROM core
+    UNION ALL
+    SELECT
+        hk_customer
+        , load_ts AS as_of_ts
+    FROM contact
+    UNION ALL
+    SELECT
+        hk_customer
+        , load_ts AS as_of_ts
+    FROM master
+)
+
+, as_of AS (
     SELECT DISTINCT
-        l.h_customer_pk
-        , l.effective_from::date AS pit_date
-    FROM {{ ref('lnk_order_customer') }} AS l
+        hk_customer
+        , as_of_ts
+    FROM as_of_raw
+
+    {% if is_incremental() %}
+        WHERE as_of_ts > (
+            SELECT coalesce(max(t.as_of_ts), to_timestamp_tz('1900-01-01'))
+            FROM {{ this }} AS t
+        )
+    {% endif %}
 )
 
-, core_asof AS (
+, core_pick AS (
     SELECT
-        sp.h_customer_pk
-        , sp.pit_date
-        , s.customer_name
-        , s.market_segment
-        , s.load_ts
-    FROM spine AS sp
-    LEFT JOIN {{ ref('sat_customer_core') }} AS s
-        ON sp.h_customer_pk = s.h_customer_pk
-    QUALIFY row_number() OVER (
-        PARTITION BY sp.h_customer_pk, sp.pit_date
-        ORDER BY s.load_ts DESC
-    ) = 1
-)
-
-, contact_asof AS (
-    SELECT
-        sp.h_customer_pk
-        , sp.pit_date
-        , s.phone
-        , s.account_balance
-        , s.customer_address
-        , s.load_ts
-    FROM spine AS sp
-    LEFT JOIN {{ ref('sat_customer_contact') }} AS s
-        ON sp.h_customer_pk = s.h_customer_pk
-    QUALIFY row_number() OVER (
-        PARTITION BY sp.h_customer_pk, sp.pit_date
-        ORDER BY s.load_ts DESC
-    ) = 1
-)
-
-, bv_asof AS (
-    SELECT
-        sp.h_customer_pk
-        , sp.pit_date
-        , s.segment
-        , s.vip_flag
-        , s.manager_id
-        , s.effective_from
-    FROM spine AS sp
-    LEFT JOIN {{ ref('bv_customer_master_sat') }} AS s
+        a.hk_customer
+        , a.as_of_ts
+        , c.load_ts AS core_load_ts
+        , row_number() OVER (
+            PARTITION BY a.hk_customer, a.as_of_ts
+            ORDER BY c.load_ts DESC
+        ) AS rn
+    FROM as_of AS a
+    LEFT JOIN core AS c
         ON
-            sp.h_customer_pk = s.h_customer_pk
-            AND s.effective_from::date <= sp.pit_date
-    QUALIFY row_number() OVER (
-        PARTITION BY sp.h_customer_pk, sp.pit_date
-        ORDER BY s.effective_from DESC
-    ) = 1
+            a.hk_customer = c.hk_customer
+            AND a.as_of_ts >= c.load_ts
+    QUALIFY rn = 1
+)
+
+, contact_pick AS (
+    SELECT
+        a.hk_customer
+        , a.as_of_ts
+        , c.load_ts AS contact_load_ts
+        , row_number() OVER (
+            PARTITION BY a.hk_customer, a.as_of_ts
+            ORDER BY c.load_ts DESC
+        ) AS rn
+    FROM as_of AS a
+    LEFT JOIN contact AS c
+        ON
+            a.hk_customer = c.hk_customer
+            AND a.as_of_ts >= c.load_ts
+    QUALIFY rn = 1
+)
+
+, master_pick AS (
+    SELECT
+        a.hk_customer
+        , a.as_of_ts
+        , m.load_ts AS master_load_ts
+        , row_number() OVER (
+            PARTITION BY a.hk_customer, a.as_of_ts
+            ORDER BY m.load_ts DESC
+        ) AS rn
+    FROM as_of AS a
+    LEFT JOIN master AS m
+        ON
+            a.hk_customer = m.hk_customer
+            AND a.as_of_ts >= m.load_ts
+    QUALIFY rn = 1
 )
 
 SELECT
-    sp.h_customer_pk
-    , sp.pit_date
-    , c.customer_name
-    , c.market_segment
-    , ct.phone
-    , ct.account_balance
-    , ct.customer_address
-    , coalesce(bv.segment, 'UNKNOWN') AS business_segment
-    , coalesce(bv.vip_flag, FALSE) AS vip_flag
-    , coalesce(bv.manager_id, -1) AS manager_id
-    , {{ record_source('tpch', 'CUSTOMER') }} AS record_source
-    , current_timestamp() AS load_ts
-FROM spine AS sp
-LEFT JOIN core_asof AS c
+    a.hk_customer
+    , a.as_of_ts
+    , cp.core_load_ts
+    , ctp.contact_load_ts
+    , mp.master_load_ts
+    , cast('{{ run_started_at }}' AS timestamp_tz) AS load_ts
+FROM as_of AS a
+LEFT JOIN core_pick AS cp
     ON
-        sp.h_customer_pk = c.h_customer_pk
-        AND sp.pit_date = c.pit_date
-LEFT JOIN contact_asof AS ct
+        a.hk_customer = cp.hk_customer
+        AND a.as_of_ts = cp.as_of_ts
+LEFT JOIN contact_pick AS ctp
     ON
-        sp.h_customer_pk = ct.h_customer_pk
-        AND sp.pit_date = ct.pit_date
-LEFT JOIN bv_asof AS bv
+        a.hk_customer = ctp.hk_customer
+        AND a.as_of_ts = ctp.as_of_ts
+LEFT JOIN master_pick AS mp
     ON
-        sp.h_customer_pk = bv.h_customer_pk
-        AND sp.pit_date = bv.pit_date
+        a.hk_customer = mp.hk_customer
+        AND a.as_of_ts = mp.as_of_ts
 
 {% if is_incremental() %}
-    WHERE
-        sp.pit_date > (
-            SELECT coalesce(max(t.pit_date), '1900-01-01'::date)
-            FROM {{ this }} AS t
-        )
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM {{ this }} AS t
+        WHERE
+            t.hk_customer = a.hk_customer
+            AND t.as_of_ts = a.as_of_ts
+    )
 {% endif %}

@@ -1,20 +1,19 @@
 {{ config(
     materialized='incremental',
-    unique_key=['h_customer_pk', 'load_ts', 'record_source'],
-    incremental_strategy='merge',
+    incremental_strategy='append',
     tags=['raw_vault', 'sat', 'high_volatility']
 ) }}
 
 WITH src AS (
     SELECT
-        c.phone
-        , c.account_balance
-        , c.customer_address
-        , c.hd_customer_contact AS hashdiff
-        , {{ record_source('tpch', 'CUSTOMER') }} AS record_source
-        , sha2(coalesce(to_varchar(c.customer_id), ''), 256) AS h_customer_pk
-        , current_timestamp() AS load_ts
-    FROM {{ ref('stg_customer') }} AS c
+        h_customer_pk
+        , phone
+        , account_balance
+        , customer_address
+        , hd_customer_contact AS hashdiff
+        , record_source
+        , load_ts
+    FROM {{ ref('stg_customer') }}
 )
 
 {% if is_incremental() %}

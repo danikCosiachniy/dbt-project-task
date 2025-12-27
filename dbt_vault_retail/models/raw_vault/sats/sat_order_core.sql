@@ -1,13 +1,12 @@
 {{ config(
     materialized='incremental',
-    incremental_strategy='merge',
-    unique_key=['h_order_pk', 'load_ts', 'record_source'],
+    incremental_strategy='append',
     tags=['raw_vault', 'sat']
 ) }}
 
 WITH src AS (
     SELECT
-        sha2(coalesce(to_varchar(order_id), ''), 256) AS h_order_pk
+        h_order_pk
         , order_status
         , total_price
         , order_date
@@ -15,19 +14,19 @@ WITH src AS (
         , clerk
         , ship_priority
         , order_comment
-        , {{ record_source('tpch', 'ORDERS') }} AS record_source
-        , current_timestamp() AS load_ts
-        , sha2(
-            coalesce(to_varchar(order_status), '') || '|'
-            || coalesce(to_varchar(total_price), '') || '|'
-            || coalesce(to_varchar(order_date), '') || '|'
-            || coalesce(to_varchar(order_priority), '') || '|'
-            || coalesce(to_varchar(clerk), '') || '|'
-            || coalesce(to_varchar(ship_priority), '') || '|'
-            || coalesce(to_varchar(order_comment), '')
-            , 256
-        ) AS hashdiff
+        , record_source
+        , load_ts
+        , hashdiff
     FROM {{ ref('stg_orders') }}
+
+    {% if is_incremental() %}
+
+    where order_date >= dateadd(
+        day, 0,
+        (select coalesce(max(order_date), to_date('1992-01-01')) from {{ this }})
+
+    )
+    {% endif %}
 )
 
 {% if is_incremental() %}

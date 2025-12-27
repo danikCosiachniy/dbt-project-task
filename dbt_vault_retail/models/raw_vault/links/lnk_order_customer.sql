@@ -1,23 +1,17 @@
 {{ config(
     materialized='incremental',
-    unique_key='l_order_customer_pk',
-    incremental_strategy='merge',
+    incremental_strategy='append',
     tags=['raw_vault', 'link']
 ) }}
 
 WITH src AS (
     SELECT
-        o.order_date AS effective_from
-        , {{ record_source('tpch', 'ORDERS') }} AS record_source
-        , sha2(
-            coalesce(to_varchar(o.order_id), '') || '|'
-            || coalesce(to_varchar(o.customer_id), '')
-            , 256
-        ) AS l_order_customer_pk
-        , sha2(coalesce(to_varchar(o.order_id), ''), 256) AS h_order_pk
-        , sha2(coalesce(to_varchar(o.customer_id), ''), 256) AS h_customer_pk
-        , current_timestamp() AS load_ts
-    FROM {{ ref('stg_orders') }} AS o
+        record_source
+        , l_order_customer_pk
+        , h_order_pk
+        , h_customer_pk
+        , load_ts
+    FROM {{ ref('stg_orders') }}
 )
 
 SELECT *

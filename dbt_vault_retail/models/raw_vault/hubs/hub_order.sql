@@ -1,16 +1,15 @@
 {{ config(
     materialized='incremental',
-    unique_key='h_order_pk',
-    incremental_strategy='merge',
+    incremental_strategy='append',
     tags=['raw_vault', 'hub']
 ) }}
 
 WITH src AS (
-    SELECT DISTINCT
+    SELECT
         order_id AS bk_order_id
-        , {{ record_source('tpch', 'ORDERS') }} AS record_source
-        , sha2(coalesce(to_varchar(order_id), ''), 256) AS h_order_pk
-        , current_timestamp() AS load_ts
+        , record_source
+        , h_order_pk
+        , load_ts
     FROM {{ ref('stg_orders') }}
 )
 
