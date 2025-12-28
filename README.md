@@ -116,27 +116,48 @@ make rebuild
 ## 3) Access 🖥️
 
 - **Airflow UI:** http://localhost:8080
-- **Login / Password:** sourced from `.env` (example: `admin / admin`)
+- **Login / Password:** sourced from `.env` (example: `admin / admin`).
 
 ---
 
 ## ▶️ Running dbt Pipelines
 
-All dbt commands are executed **inside the Airflow container** using a custom runner.
+In this setup, dbt runs are orchestrated by **Airflow (Cosmos)**. You trigger DAG runs from the repository root using the Makefile.
 
-**Full load** (deps + seeds + full-refresh build)
+### Recommended (trigger Airflow DAGs)
+
+**Auto mode** (the DAG decides *initial vs incremental* based on Snowflake state)
+```bash
+make auto-load
+```
+
+**Force full refresh**
 ```bash
 make initial-load
 ```
 
-**Incremental load**
+**Force incremental**
 ```bash
 make incremental-load
 ```
 
-**Clean artifacts**
+**Cleanup Snowflake schemas (drop by prefix)**
 ```bash
 make clean-up
+```
+
+### Debug (run dbt directly inside the container)
+
+These targets run a custom dbt runner inside the container and are mainly useful for troubleshooting:
+
+```bash
+make initial-load-runner
+make incremental-load-runner
+```
+
+**Clean dbt artifacts** (local + `dbt clean` inside container)
+```bash
+make clean-up-local
 ```
 
 ---
@@ -186,7 +207,8 @@ This guarantees consistent versions across:
 .
 ├── airflow/                         # Airflow-specific code and configuration
 │   ├── dags/
-│   │   ├── retail_pipeline.py       # Main DAG (Cosmos-based dbt orchestration)
+│   │   ├── retail_vault_dag.py      # Main DAG: branches into initial vs incremental based on Snowflake state (or run config)
+│   │   ├── cleanup_database.py      # Maintenance DAG: drop Snowflake schemas by prefix
 │   │   └── utils/                   # Helpers (dbt runner, notifications, callbacks)
 │   ├── logs/                        # Airflow logs (mounted)
 │   ├── plugins/                     # Optional custom Airflow plugins
@@ -208,7 +230,7 @@ This guarantees consistent versions across:
 ├── docker/
 │   └── entrypoint.sh                # Starts Postgres + runs Airflow migrations + starts scheduler/webserver
 ├── Dockerfile                       # Custom Airflow image with dbt & Cosmos deps
-├── Makefile                         # Project commands (build, run, lint, dbt runs)
+├── Makefile                         # Project commands (build/run, trigger DAGs, lint, debug dbt runs)
 ├── pyproject.toml                   # Python dependencies (uv / PEP 621)
 ├── uv.lock                          # Dependency lockfile
 └── README.md                        # Root documentation (this file)
@@ -222,6 +244,7 @@ This guarantees consistent versions across:
 - All dbt models follow **Data Vault 2.0** best practices.
 - Facts and dimensions are built only from Vault layers, never directly from staging.
 - PIT tables provide historical “as-of” business views.
+- The load DAG supports both **auto** selection and **manual override** via run config (used by `make auto-load`, `make initial-load`, `make incremental-load`).
 
 ---
 
