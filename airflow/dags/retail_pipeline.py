@@ -6,6 +6,7 @@ from typing import Any
 from cosmos import DbtTaskGroup, ExecutionConfig, ProfileConfig, ProjectConfig, RenderConfig
 
 from airflow import DAG
+from airflow.operators.python import PythonOperator, get_current_context
 from utils.constants import DBT_PROJECT_PATH
 from utils.dbt_logger import (
     log_dag_success_callback,
@@ -31,6 +32,25 @@ default_args: dict[str, Any] = {
     'on_execute_callback': log_start_callback,
 }
 
+
+def decide_full_refresh() -> bool:
+    """
+    Decide full_refresh at DAGRun runtime.
+
+    Priority:
+      1) dag_run.conf["full_refresh"] if provided (manual/makefile trigger)
+      2) auto-detection via should_full_refresh() (Snowflake state)
+    """
+    ctx = get_current_context()
+    conf = (ctx.get('dag_run').conf or {}) if ctx.get('dag_run') else {}
+
+    if 'full_refresh' in conf:
+        return bool(conf['full_refresh'])
+
+    # auto mode (anchor table in RAW_VAULT schema)
+    return bool(should_full_refresh(anchor_table='HUB_CUSTOMER'))
+
+
 # Main Airflow DAG definition
 with DAG(
     dag_id='retail_vault_dag',
@@ -40,13 +60,19 @@ with DAG(
     default_args=default_args,
     on_success_callback=log_dag_success_callback,
     tags=['dbt', 'retail', 'snowflake'],
+    render_template_as_native_obj=True,
 ) as dag:
     # Fetch credentials before creating tasks
     dbt_env = get_env()
+    # Decide full_refresh at runtime and push to XCom
+    decide_mode = PythonOperator(
+        task_id='decide_full_refresh',
+        python_callable=decide_full_refresh,
+    )
     # Common operator arguments applied to all dbt tasks
     common_operator_args = {
         'install_deps': True,  # Automatically runs `dbt deps` once
-        'full_refresh': should_full_refresh(),  # Uses incremental logic where defined
+        'full_refresh': "{{ ti.xcom_pull(task_ids='decide_full_refresh') }}",  # Uses incremental logic where defined
         'env': dbt_env,
     }
     dbt_seed = DbtTaskGroup(
@@ -110,4 +136,4 @@ with DAG(
         operator_args=common_operator_args,
     )
     # Execution order:
-    staging_tg >> raw_vault_tg >> dbt_seed >> business_vault_tg >> marts_tg
+    decide_mode >> staging_tg >> raw_vault_tg >> dbt_seed >> business_vault_tg >> marts_tg

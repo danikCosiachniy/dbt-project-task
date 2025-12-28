@@ -17,7 +17,11 @@ export
 # dbt runner inside container
 RUNNER = python /opt/airflow/dags/utils/dbt_runner.py
 
-.PHONY: help build up down restart rebuild logs lint ps initial-load incremental-load clean-up airflow-connections airflow-conn-snowflake
+AIRFLOW = $(DOCKER) exec -u airflow -i $(CONTAINER) bash -lc
+LOAD_DAG = retail_vault_dag
+CLEAN_DAG = cleanup_database
+
+.PHONY: help build up down restart rebuild logs lint ps initial-load incremental-load clean-up airflow-connections airflow-conn-snowflake clean-up-local incremental-load-runner initial-load-runner
 
 build: ## Build image
 	$(DOCKER) build --no-cache -t $(IMAGE) .
@@ -49,19 +53,31 @@ ps: ## Show container status
 lint: ## Run linters
 	$(PRE_COMMIT) run --all-files
 
-initial-load: ## Run Full Refresh (Deps + Seeds + Build from scratch)
+initial-load-runner: ## Run Full Refresh (Deps + Seeds + Build from scratch)
 	$(EXEC) $(CONTAINER) $(RUNNER) deps
 	$(EXEC) $(CONTAINER) $(RUNNER) seed --full-refresh
 	$(EXEC) $(CONTAINER) $(RUNNER) build --full-refresh
 
-incremental-load: ## Run Incremental Load (Only new data)
+incremental-load-runner: ## Run Incremental Load (Only new data)
 	$(EXEC) $(CONTAINER) $(RUNNER) deps
 	$(EXEC) $(CONTAINER) $(RUNNER) build
 
-clean-up: ## Clean artifacts (local + dbt clean inside container)
+clean-up-local: ## Clean artifacts (local + dbt clean inside container)
 	rm -rf dbt_vault_retail/target dbt_vault_retail/dbt_packages dbt_vault_retail/logs
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	-$(EXEC) $(CONTAINER) bash -lc "cd /opt/airflow/dbt_project && dbt clean"
+
+initial-load:
+	$(AIRFLOW) "airflow dags trigger $(LOAD_DAG) --conf '{\"full_refresh\": true}'"
+
+incremental-load:
+	$(AIRFLOW) "airflow dags trigger $(LOAD_DAG) --conf '{\"full_refresh\": false}'"
+
+auto-load:
+	$(AIRFLOW) "airflow dags trigger $(LOAD_DAG)"
+
+clean-up:
+	$(AIRFLOW) "airflow dags trigger $(CLEAN_DAG)"
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
