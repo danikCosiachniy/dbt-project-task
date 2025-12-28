@@ -1,47 +1,54 @@
-from airflow.models import Variable
-from utils.constants import FLAG_NAME
+from airflow.providers.snowflake.hooks.snowflake import SnowflakeHook
+from utils.constants import CONN_NAME
+from utils.get_creeds import get_env
 
 
-def get_flag() -> bool:
+def _qi(name: str) -> str:
+    return '"' + name.replace('"', '""') + '"'
+
+
+def should_full_refresh(anchor_table: str = 'HUB_CUSTOMER') -> bool:
     """
-    Determine whether a full refresh (initial-load) should be executed.
+    Decide whether to run dbt with --full-refresh based on Snowflake state.
 
-    The function reads the Airflow Variable defined by ``FLAG_NAME`` and treats the
-    value ``"true"`` as "already initialized". If the flag is missing or not equal
-    to ``"true"``, the function returns ``True`` to indicate that the DAG should run
-    an initial-load (dbt full-refresh). If the flag is ``"true"``, it returns ``False``
-    to indicate an incremental run.
+    Rules:
+      - If the anchor table does not exist -> True (initial-load)
+      - If the anchor table exists but has 0 rows -> True (initial-load)
+      - If the anchor table exists and has rows -> False (incremental)
 
-    :return: True if the initialization flag is not set to "true" (run initial-load),
-             otherwise False (run incremental-load).
-    :rtype: bool
+    NOTE: If connection/query fails, returns False (incremental) to avoid accidental full-refresh.
     """
-    return Variable.get(FLAG_NAME, default_var='false').lower() != 'true'
+    env = get_env()
+    database = env.get('SNOWFLAKE_DATABASE')
+    base_schema = env.get('SNOWFLAKE_SCHEMA')
 
+    if not database or not base_schema:
+        raise ValueError('SNOWFLAKE_DATABASE / SNOWFLAKE_SCHEMA must be set')
 
-def set_initialized_flag() -> None:
+    # Build the target schema as "<BASE_SCHEMA>_RAW_VAULT"
+    schema = f'{base_schema}_RAW_VAULT'
+
+    hook = SnowflakeHook(CONN_NAME)
+    # 1) table exists?
+    exists_sql = f"""
+    SELECT 1
+    FROM {_qi(database)}.INFORMATION_SCHEMA.TABLES
+    WHERE table_schema = %s
+      AND table_name   = %s
+    LIMIT 1
     """
-    Mark the Data Vault as initialized.
+    exists = hook.get_records(
+        exists_sql,
+        parameters=(schema.upper(), anchor_table.upper()),
+    )
+    if not exists:
+        return True
 
-    This function sets the Airflow Variable defined by ``FLAG_NAME`` to the string
-    value ``"true"``. It is typically executed at the end of a successful initial-load
-    run so that subsequent DAG runs switch to incremental mode.
-
-    :return: None
-    :rtype: None
+    # 2) table has rows?
+    has_rows_sql = f"""
+    SELECT 1
+    FROM {_qi(database)}.{_qi(schema)}.{_qi(anchor_table)}
+    LIMIT 1
     """
-    Variable.set(FLAG_NAME, 'true')
-
-
-def set_initialized_false() -> None:
-    """
-    Reset the Data Vault initialization flag.
-
-    This function sets the Airflow Variable defined by ``FLAG_NAME`` to the string
-    value ``"false"``. It is typically executed after a clean-up/reset procedure so
-    that the next run of the main DAG performs an initial-load (dbt full-refresh).
-
-    :return: None
-    :rtype: None
-    """
-    Variable.set(FLAG_NAME, 'false')
+    rows = hook.get_records(has_rows_sql)
+    return len(rows) == 0

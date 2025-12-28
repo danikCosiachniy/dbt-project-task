@@ -4,11 +4,9 @@ from typing import Any
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.snowflake.hooks.snowflake import SnowflakeHook
-from airflow.utils.trigger_rule import TriggerRule
 from utils.constants import CONN_NAME
 from utils.dbt_logger import log_failure_callback, log_start_callback, log_success_callback
 from utils.get_creeds import get_env
-from utils.load_mode import set_initialized_false
 
 
 def _qi(name: str) -> str:
@@ -75,11 +73,3 @@ with DAG(
         task_id='drop_dbt_schemas_by_prefix',
         python_callable=delete_all_schemas,
     )
-
-    reset_flag = PythonOperator(
-        task_id='reset_initialized_flag',
-        python_callable=set_initialized_false,
-        trigger_rule=TriggerRule.ALL_SUCCESS,
-    )
-
-    cleanup_task >> reset_flag
