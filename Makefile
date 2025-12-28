@@ -24,7 +24,7 @@ AIRFLOW = $(DOCKER) exec -u airflow -i $(CONTAINER) bash -lc
 LOAD_DAG = retail_vault_dag
 CLEAN_DAG = cleanup_database
 
-.PHONY: help build up down restart rebuild logs lint ps load initial-load incremental-load clean-up initial-load-runner incremental-load-runner clean-up-local
+.PHONY: help build up down restart rebuild logs lint ps auto-load initial-load incremental-load clean-up initial-load-runner incremental-load-runner clean-up-local
 
 build: ## Build image
 	$(DOCKER) build --no-cache -t $(IMAGE) .
@@ -67,7 +67,7 @@ initial-load-runner: ## Run Full Refresh directly via dbt_runner (debug)
 incremental-load: ## Trigger INCREMENTAL load (forces incremental) via Airflow DAG run config
 	$(AIRFLOW) "airflow dags trigger $(LOAD_DAG) --conf '{\"mode\":\"incremental\"}'"
 
-load: ## Trigger AUTO load (DAG decides initial vs incremental)
+auto-load: ## Trigger AUTO load (DAG decides initial vs incremental)
 	$(AIRFLOW) "airflow dags trigger $(LOAD_DAG) --conf '{\"mode\":\"auto\"}'"
 
 incremental-load-runner: ## Run Incremental directly via dbt_runner (debug)
