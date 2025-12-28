@@ -17,7 +17,14 @@ export
 # dbt runner inside container
 RUNNER = python /opt/airflow/dags/utils/dbt_runner.py
 
-.PHONY: help build up down restart rebuild logs lint ps initial-load incremental-load clean-up airflow-connections airflow-conn-snowflake
+# Airflow CLI inside running container
+AIRFLOW = $(DOCKER) exec -u airflow -i $(CONTAINER) bash -lc
+
+# DAG IDs
+LOAD_DAG = retail_vault_dag
+CLEAN_DAG = cleanup_database
+
+.PHONY: help build up down restart rebuild logs lint ps load initial-load incremental-load clean-up initial-load-runner incremental-load-runner clean-up-local
 
 build: ## Build image
 	$(DOCKER) build --no-cache -t $(IMAGE) .
@@ -37,8 +44,8 @@ down: ## Stop & remove container
 restart: down up ## Restart container
 
 rebuild: ## Rebuild image and restart container
-	make build
-	make up
+	$(MAKE) build
+	$(MAKE) up
 
 logs: ## Follow container logs
 	$(DOCKER) logs -f $(CONTAINER)
@@ -49,16 +56,28 @@ ps: ## Show container status
 lint: ## Run linters
 	$(PRE_COMMIT) run --all-files
 
-initial-load: ## Run Full Refresh (Deps + Seeds + Build from scratch)
+initial-load: ## Trigger FULL load (forces full_refresh) via Airflow DAG run config
+	$(AIRFLOW) "airflow dags trigger $(LOAD_DAG) --conf '{\"mode\":\"initial\"}'"
+
+initial-load-runner: ## Run Full Refresh directly via dbt_runner (debug)
 	$(EXEC) $(CONTAINER) $(RUNNER) deps
 	$(EXEC) $(CONTAINER) $(RUNNER) seed --full-refresh
 	$(EXEC) $(CONTAINER) $(RUNNER) build --full-refresh
 
-incremental-load: ## Run Incremental Load (Only new data)
+incremental-load: ## Trigger INCREMENTAL load (forces incremental) via Airflow DAG run config
+	$(AIRFLOW) "airflow dags trigger $(LOAD_DAG) --conf '{\"mode\":\"incremental\"}'"
+
+load: ## Trigger AUTO load (DAG decides initial vs incremental)
+	$(AIRFLOW) "airflow dags trigger $(LOAD_DAG) --conf '{\"mode\":\"auto\"}'"
+
+incremental-load-runner: ## Run Incremental directly via dbt_runner (debug)
 	$(EXEC) $(CONTAINER) $(RUNNER) deps
 	$(EXEC) $(CONTAINER) $(RUNNER) build
 
-clean-up: ## Clean artifacts (local + dbt clean inside container)
+clean-up: ## Trigger cleanup DAG (Snowflake schema drop by prefix)
+	$(AIRFLOW) "airflow dags trigger $(CLEAN_DAG)"
+
+clean-up-local: ## Clean local artifacts + dbt clean inside container
 	rm -rf dbt_vault_retail/target dbt_vault_retail/dbt_packages dbt_vault_retail/logs
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	-$(EXEC) $(CONTAINER) bash -lc "cd /opt/airflow/dbt_project && dbt clean"

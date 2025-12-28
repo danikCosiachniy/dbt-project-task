@@ -7,7 +7,7 @@ from cosmos import DbtTaskGroup, ExecutionConfig, ProfileConfig, ProjectConfig, 
 
 from airflow import DAG
 from airflow.operators.empty import EmptyOperator
-from airflow.operators.python import BranchPythonOperator
+from airflow.operators.python import BranchPythonOperator, get_current_context
 from airflow.utils.task_group import TaskGroup
 from utils.constants import DBT_PROJECT_PATH
 from utils.dbt_logger import (
@@ -34,6 +34,21 @@ default_args: dict[str, Any] = {
     'on_execute_callback': log_start_callback,
 }
 
+
+def choose_chain() -> str:
+    ctx = get_current_context()
+    conf = (ctx.get('dag_run').conf or {}) if ctx.get('dag_run') else {}
+    mode = (conf.get('mode') or 'auto').lower()
+
+    if mode == 'initial':
+        return 'initial_chain.start'
+    if mode == 'incremental':
+        return 'incremental_chain.start'
+
+    # auto
+    return should_full_refresh()
+
+
 # Main Airflow DAG definition
 with DAG(
     dag_id='retail_vault_dag',
@@ -49,7 +64,7 @@ with DAG(
     # Branching
     check_state = BranchPythonOperator(
         task_id='check_db_state',
-        python_callable=should_full_refresh,
+        python_callable=choose_chain,
     )
     with TaskGroup(group_id='incremental_chain') as incremental_chain:
         # Start point of incremental-chain
