@@ -15,7 +15,7 @@ The project is designed to work with **Snowflake** as the analytical warehouse a
 - **Data Warehouse:** Snowflake
 - **Metadata & Orchestration DB:** Postgres (runs inside the Airflow container)
 - **Dependency Management:** uv (Astral)
-- **Infrastructure:** Docker (single-container local setup)
+- **Infrastructure:** Docker (single-container local setup; no docker-compose)
 - **Methodology:** Data Vault 2.0
 
 ---
@@ -56,13 +56,14 @@ Snowflake credentials must be stored in **Airflow Connections**.
 
 ---
 
+
 # 🚀 Quick Start
 
 ## 1) Environment Configuration (`.env`)
 
-Create a `.env` file in the root directory.
+Create a `.env` file in the project root.
 
-**Important:** This file is used **only** for Airflow/Docker infrastructure configuration. It is **not** used for warehouse credentials.
+**Important:** `.env` is used **only** for local Docker/Airflow infrastructure configuration (Airflow metadata DB, admin user, etc.). It is **not** used for Snowflake warehouse credentials.
 
 ```bash
 touch .env
@@ -101,7 +102,7 @@ The project is managed via **Makefile** (recommended approach).
 make build
 ```
 
-**Run container**
+**Run container** (Airflow + Postgres inside; entrypoint initializes Postgres, runs Airflow migrations, then starts scheduler + webserver)
 ```bash
 make up
 ```
@@ -109,6 +110,15 @@ make up
 **Full rebuild (rebuild + restart)**
 ```bash
 make rebuild
+```
+
+**Other useful commands**
+```bash
+make logs      # follow container logs
+make ps        # container status
+make down      # stop & remove container
+make restart   # restart container
+make lint      # run linters via pre-commit
 ```
 
 ---
@@ -122,21 +132,39 @@ make rebuild
 
 ## ▶️ Running dbt Pipelines
 
-All dbt commands are executed **inside the Airflow container** using a custom runner.
+By default, dbt runs are orchestrated by **Airflow DAGs (Cosmos)**. The Makefile targets below **trigger DAG runs** inside the running container.
 
-**Full load** (deps + seeds + full-refresh build)
+**Full load** (forces `--full-refresh` via DAG run config)
 ```bash
 make initial-load
 ```
 
-**Incremental load**
+**Incremental load** (forces incremental mode via DAG run config)
 ```bash
 make incremental-load
 ```
 
-**Clean artifacts**
+**Auto mode** (DAG decides full vs incremental at runtime)
+```bash
+make auto-load
+```
+
+**Cleanup Snowflake schemas** (triggers the maintenance DAG)
 ```bash
 make clean-up
+```
+
+### Advanced: run dbt directly (bypassing DAGs)
+These targets run the legacy `dbt_runner.py` inside the container (useful for local debugging).
+
+```bash
+make initial-load-runner
+make incremental-load-runner
+```
+
+**Clean local artifacts**
+```bash
+make clean-up-local
 ```
 
 ---
@@ -186,7 +214,7 @@ This guarantees consistent versions across:
 .
 ├── airflow/                         # Airflow-specific code and configuration
 │   ├── dags/
-│   │   ├── retail_pipeline.py       # Main DAG (Cosmos-based dbt orchestration)
+│   │   ├── retail_pipeline.py       # Main DAG (Cosmos-based dbt orchestration; supports full/incremental/auto modes)
 │   │   └── utils/                   # Helpers (dbt runner, notifications, callbacks)
 │   ├── logs/                        # Airflow logs (mounted)
 │   ├── plugins/                     # Optional custom Airflow plugins
@@ -206,9 +234,9 @@ This guarantees consistent versions across:
 │   └── README.md                    # dbt-specific documentation
 │
 ├── docker/
-│   └── entrypoint.sh                # Starts Postgres + runs Airflow migrations + starts scheduler/webserver
+│   └── entrypoint.sh                # Starts Postgres + runs Airflow migrations + starts scheduler + webserver
 ├── Dockerfile                       # Custom Airflow image with dbt & Cosmos deps
-├── Makefile                         # Project commands (build, run, lint, dbt runs)
+├── Makefile                         # Project commands (build/run/lint + trigger DAGs; optional dbt_runner for debugging)
 ├── pyproject.toml                   # Python dependencies (uv / PEP 621)
 ├── uv.lock                          # Dependency lockfile
 └── README.md                        # Root documentation (this file)
