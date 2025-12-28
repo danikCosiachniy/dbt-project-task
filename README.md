@@ -74,6 +74,11 @@ Example `.env`:
 AIRFLOW_UID=50000
 AIRFLOW_PROJ_DIR=./airflow
 
+POSTGRES_USER=airflow
+POSTGRES_DB=airflow
+POSTGRES_PASSWORD=airflow
+PGDATA=/var/lib/postgresql/data
+AIRFLOW__CORE__EXECUTOR=LocalExecutor
 AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@127.0.0.1:5432/airflow
 
 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python

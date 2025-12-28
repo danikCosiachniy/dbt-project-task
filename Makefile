@@ -10,12 +10,9 @@ LOGS_DIR = ./airflow/logs
 PRE_COMMIT = pre-commit
 DOCKER = docker
 EXEC = $(DOCKER) exec -i
-
-# Airflow metadata DB inside the same container (override legacy .env values)
-AIRFLOW_DB_USER = airflow
-AIRFLOW_DB_PASS = airflow
-AIRFLOW_DB_NAME = airflow
-AIRFLOW_DB_CONN = postgresql+psycopg2://$(AIRFLOW_DB_USER):$(AIRFLOW_DB_PASS)@127.0.0.1:5432/$(AIRFLOW_DB_NAME)
+# load .env into Make variables
+include .env
+export
 
 # dbt runner inside container
 RUNNER = python /opt/airflow/dags/utils/dbt_runner.py
@@ -29,7 +26,6 @@ up: ## Run container (Airflow+Postgres inside, entrypoint handles init)
 	$(DOCKER) rm -f $(CONTAINER) 2>/dev/null || true
 	$(DOCKER) run -d --name $(CONTAINER) \
 	  --env-file $(ENV_FILE) \
-	  -e AIRFLOW__DATABASE__SQL_ALCHEMY_CONN="$(AIRFLOW_DB_CONN)" \
 	  -p $(PORT):8080 \
 	  -v $(PG_VOLUME):/var/lib/postgresql/data \
 	  -v "$(LOGS_DIR)":/opt/airflow/logs \

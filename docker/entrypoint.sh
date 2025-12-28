@@ -5,17 +5,16 @@ INITDB=/usr/local/bin/initdb
 PG_CTL=/usr/local/bin/pg_ctl
 PSQL=/usr/local/bin/psql
 
-: "${POSTGRES_USER:=airflow}"
-: "${POSTGRES_PASSWORD:=airflow}"
-: "${POSTGRES_DB:=airflow}"
-: "${PGDATA:=/var/lib/postgresql/data}"
+: "${POSTGRES_USER}"
+: "${POSTGRES_PASSWORD}"
+: "${POSTGRES_DB}"
+: "${PGDATA}"
 
 : "${AIRFLOW__CORE__EXECUTOR:=LocalExecutor}"
 
 export POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB PGDATA
-export AIRFLOW__CORE__EXECUTOR
+export AIRFLOW__CORE__EXECUTOR PGDATA
 
-AIRFLOW__DATABASE__SQL_ALCHEMY_CONN="postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:5432/${POSTGRES_DB}"
 export AIRFLOW__DATABASE__SQL_ALCHEMY_CONN
 unset AIRFLOW__CORE__SQL_ALCHEMY_CONN || true
 
