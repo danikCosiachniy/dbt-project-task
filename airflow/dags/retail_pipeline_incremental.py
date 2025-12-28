@@ -32,7 +32,7 @@ default_args: dict[str, Any] = {
 
 # Main Airflow DAG definition
 with DAG(
-    dag_id='retail_vault_dag',
+    dag_id='retail_vault_incremental_dag',
     start_date=datetime(2023, 1, 1),
     schedule_interval='@daily',
     catchup=False,
