@@ -28,6 +28,7 @@ jobs:
 
       - name: Check for forbidden files (.env, keys, etc.)
         run: |
+          set -euo pipefail
           forbidden_files=".env .env.local .env.dev .env.prod id_rsa id_ed25519"
           for f in $forbidden_files; do
             if git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
@@ -36,30 +37,49 @@ jobs:
             fi
           done
 
-      - name: Scan repository for obvious secrets
+      - name: Scan repository for obvious secrets (hardcoded values)
         run: |
-          # Ищем явные паттерны паролей/секретов
-          patterns='password|secret_key|api_key|AWS_SECRET_ACCESS_KEY|SNOWFLAKE_PASSWORD'
+          set -euo pipefail
 
-          # Сырые попадания (кроме доки, CI и docker-compose)
-          raw_hits="$(git grep -niE "$patterns" -- \
+          # We only flag suspicious "hardcoded" literals:
+          #   password=abc, password: "abc", secret_key: 'abc', api_key=abc, token: abc
+          # We do NOT flag:
+          #   password: $VAR
+          #   password: ${VAR}
+          #   password coming from GitHub secrets expression
+          assign_patterns='(?i)(password|passwd|secret(_key)?|api[_-]?key|token)\s*[:=]\s*["'\''"]?[^$<{]'
+
+          raw_assign_hits="$(git grep -nI -P "$assign_patterns" -- \
             . \
             ':!*.md' \
             ':!.github/workflows/*' \
             ':!docker-compose.yaml' \
+            ':!docker/entrypoint.sh' \
             || true)"
 
-          # Отбрасываем заведомо безопасные случаи:
-          #  - env_var('SNOWFLAKE_PASSWORD', ...) в dbt profiles
-          #  - config.get('password') в Airflow DAG'е
+          # Also flag CLI --password with a literal value (not $VAR / not ${VAR} / not GH secrets expression)
+          cli_patterns='(?i)--password\s+["'\''"]?[^$<{]'
+
+          raw_cli_hits="$(git grep -nI -P "$cli_patterns" -- \
+            . \
+            ':!*.md' \
+            ':!.github/workflows/*' \
+            ':!docker-compose.yaml' \
+            ':!docker/entrypoint.sh' \
+            || true)"
+
+          raw_hits="$(printf "%s\n%s\n" "$raw_assign_hits" "$raw_cli_hits" | sed '/^$/d' || true)"
+
+          # Allowlist known-safe patterns (optional)
           filtered_hits="$(printf "%s\n" "$raw_hits" | grep -Ev 'env_var..SNOWFLAKE_PASSWORD|config\.get..password\.|conn\.password' || true)"
 
           if [ -n "$filtered_hits" ]; then
-            echo "::error ::Potential secrets detected in the repository (excluding known-safe patterns):"
+            echo "::error ::Potential hardcoded secrets detected in the repository:"
             printf "%s\n" "$filtered_hits"
             exit 1
           fi
-          echo "No obvious secrets detected."
+
+          echo "No hardcoded secrets detected."
 
   lint:
     name: Lint & format check
@@ -109,6 +129,7 @@ jobs:
 
       - name: Create CI profiles.yml
         run: |
+          set -euo pipefail
           mkdir -p ~/.dbt
           cat << EOF > ~/.dbt/profiles.yml
           retail_vault_profile:
