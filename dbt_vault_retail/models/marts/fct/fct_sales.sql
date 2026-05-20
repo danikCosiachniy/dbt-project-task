@@ -24,14 +24,12 @@ WITH lineitem_link AS (
     FROM {{ ref('sat_order_lineitem_measures') }} AS s
 
     {% if is_incremental() %}
-        WHERE s.load_ts >= DATEADD(
-            DAY, 0
-            , (
-                SELECT COALESCE(MAX(t.valid_from), TO_TIMESTAMP_TZ('1900-01-01'))
-                FROM {{ this }} AS t
-            )
+        WHERE s.load_ts >= (
+            SELECT COALESCE(MAX(t.valid_from), TO_TIMESTAMP_TZ('1900-01-01'))
+            FROM {{ this }} AS t
         )
     {% endif %}
+
     QUALIFY ROW_NUMBER() OVER (
         PARTITION BY s.l_order_lineitem_pk, s.load_ts
         ORDER BY s.hashdiff DESC
@@ -79,9 +77,7 @@ WITH lineitem_link AS (
         ) AS rn
     FROM base_pairs AS b
     INNER JOIN order_sat_hist AS os
-        ON
-            b.h_order_pk = os.h_order_pk
-            AND b.valid_from >= os.load_ts
+        ON b.h_order_pk = os.h_order_pk
 )
 
 , order_asof_pick AS (
@@ -104,9 +100,7 @@ WITH lineitem_link AS (
         ) AS rn
     FROM base_pairs AS b
     LEFT JOIN order_customer_hist AS oc
-        ON
-            b.h_order_pk = oc.h_order_pk
-            AND b.valid_from >= oc.load_ts
+        ON b.h_order_pk = oc.h_order_pk
 )
 
 , customer_asof_pick AS (
@@ -130,13 +124,11 @@ WITH lineitem_link AS (
         , b.valid_from
     FROM base_pairs AS b
     INNER JOIN order_asof_pick AS o
-        ON
-            b.sales_key = o.sales_key
-            AND b.valid_from = o.valid_from
+        ON b.sales_key = o.sales_key
+        AND b.valid_from = o.valid_from
     LEFT JOIN customer_asof_pick AS c
-        ON
-            b.sales_key = c.sales_key
-            AND b.valid_from = c.valid_from
+        ON b.sales_key = c.sales_key
+        AND b.valid_from = c.valid_from
 )
 
 , fact_versions AS (
@@ -169,10 +161,9 @@ WITH lineitem_link AS (
     LEFT JOIN {{ ref('dim_date') }} AS d
         ON fv.order_date = d.date_key
     LEFT JOIN {{ ref('dim_customer') }} AS dc
-        ON
-            fv.h_customer_pk = dc.h_customer_pk
-            AND (fv.valid_from)::DATE >= dc.valid_from
-            AND (fv.valid_from)::DATE < dc.valid_to
+        ON fv.h_customer_pk = dc.h_customer_pk
+        AND (fv.valid_from)::DATE >= dc.valid_from
+        AND (fv.valid_from)::DATE < dc.valid_to
     LEFT JOIN {{ ref('dim_product') }} AS dp
         ON fv.h_product_pk = dp.h_product_pk
 )
@@ -186,9 +177,8 @@ WITH lineitem_link AS (
         FROM {{ this }} AS t
         INNER JOIN new_rows AS n
             ON t.sales_key = n.sales_key
-        WHERE
-            t.is_current = TRUE
-            AND n.valid_from > t.valid_from
+        WHERE t.is_current = TRUE
+          AND n.valid_from > t.valid_from
         GROUP BY
             t.sales_key
             , t.valid_from
@@ -212,9 +202,8 @@ WITH lineitem_link AS (
             , CAST('{{ run_started_at }}' AS TIMESTAMP_TZ) AS load_ts
         FROM {{ this }} AS t
         INNER JOIN to_close AS c
-            ON
-                t.sales_key = c.sales_key
-                AND t.valid_from = c.valid_from
+            ON t.sales_key = c.sales_key
+            AND t.valid_from = c.valid_from
     )
 {% endif %}
 
@@ -223,5 +212,5 @@ WITH lineitem_link AS (
     UNION ALL
     SELECT * FROM new_rows
 {% else %}
-SELECT * FROM new_rows
+    SELECT * FROM new_rows
 {% endif %}
